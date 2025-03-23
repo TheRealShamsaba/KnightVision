@@ -3,8 +3,8 @@ This class is responsible for starting all the information about the cuttent sta
 it will also be responsible for determining the valid moves at thte cureent state and it will also keep a move log
 """
 
-class gameState():
-    def _init_(self):
+class GameState():
+    def __init__(self):
         #The board is 8*8 2d list, each element of the list has a 2 characters
         #the firsr char representes the color of the piece, 'b' , 'w'
         #the second char represents the type of the piece
