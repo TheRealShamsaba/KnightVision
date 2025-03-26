@@ -17,7 +17,7 @@ initialize a global dic of images. this will be called exactly once in the main
 """
 
 def Load_Images():
-    pieces = ['wp' , 'wR' , 'wN' , 'wK' , 'wQ' , 'bp' , 'bR' , 'bK' , 'bB' , 'bK' , 'bQ']
+    pieces = ['wp', 'wR', 'wN', 'wB', 'wQ', 'wK', 'bp', 'bR', 'bN', 'bB', 'bQ', 'bK']
     for piece in pieces:
         IMAGES[piece] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE))
     #Note: we can access an image by sayin 'IMAGES['wp'] 
@@ -34,10 +34,25 @@ def main():
         gs = chessEngine.GameState()
         Load_Images() #only once before while loop
         running = True
+        sqSelected = () # no squre  is selected, keep track of the last click of the user (tuple: (row , col))
+        playerClicks = [] # keeps track of the player clicks (two tuple)
         while running:
             for e in p.event.get():
                 if e.type == p.QUIT:
                     running = False
+                elif e.type == p.MOUSEBUTTONDOWN:
+                    location = p.get_pos() # (x,y) location of mouse
+                    col = location[0]//SQ_SIZE
+                    row = location[1]//SQ_SIZE
+                    if sqSelected  == (row , col):
+                        sqSelected = () #deselect
+                        playerClicks = []
+                    else:
+                        sqSelected = (row , col)
+                        playerClicks.append(sqSelected) # appended for both 1st and 2nd clicks
+                    if len(playerClicks) ==2 : # after the second click
+                        
+                    
             drawGameState(screen , gs)
             clock.tick(MAX_FPS)
             p.display.flip()
@@ -57,11 +72,17 @@ def drawBoard(screen):
         for c in range(DIMENSION):
             color = colors[((r+c) %2) ]
             p.draw.rect(screen, color, p.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE , SQ_SIZE))
+            
+            
     '''
     draw the pices on the board useing current GameState.board
     '''
 def drawPieces(screen , board):
-    pass
+    for r in range(DIMENSION):
+        for c in range(DIMENSION):
+            piece = board[r][c]
+            if piece != "--" : # not empty square
+                screen.blit(IMAGES[piece], p.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
 
 
 if __name__ == "__main__":
