@@ -41,7 +41,7 @@ def main():
                 if e.type == p.QUIT:
                     running = False
                 elif e.type == p.MOUSEBUTTONDOWN:
-                    location = p.get_pos() # (x,y) location of mouse
+                    location = p.mouse.get_pos() # (x,y) location of mouse
                     col = location[0]//SQ_SIZE
                     row = location[1]//SQ_SIZE
                     if sqSelected  == (row , col):
@@ -51,7 +51,11 @@ def main():
                         sqSelected = (row , col)
                         playerClicks.append(sqSelected) # appended for both 1st and 2nd clicks
                     if len(playerClicks) ==2 : # after the second click
-                        
+                        move = chessEngine.Move(playerClicks[0], playerClicks[1], gs.board)
+                        print(move.getChessNotaion())
+                        gs.makeMove(move)
+                        sqSelected = () #reset the user clicks
+                        playerClicks = []
                     
             drawGameState(screen , gs)
             clock.tick(MAX_FPS)
