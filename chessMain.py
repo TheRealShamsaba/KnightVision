@@ -40,6 +40,7 @@ def main():
             for e in p.event.get():
                 if e.type == p.QUIT:
                     running = False
+                # mouse handler
                 elif e.type == p.MOUSEBUTTONDOWN:
                     location = p.mouse.get_pos() # (x,y) location of mouse
                     col = location[0]//SQ_SIZE
@@ -50,12 +51,22 @@ def main():
                     else:
                         sqSelected = (row , col)
                         playerClicks.append(sqSelected) # appended for both 1st and 2nd clicks
-                    if len(playerClicks) ==2 : # after the second click
+                    if len(playerClicks) == 2:  # after the second click
                         move = chessEngine.Move(playerClicks[0], playerClicks[1], gs.board)
-                        print(move.getChessNotaion())
-                        gs.makeMove(move)
-                        sqSelected = () #reset the user clicks
-                        playerClicks = []
+                        piece = gs.board[move.startRow][move.startCol]
+                        if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
+                            gs.makeMove(move)
+                            print(move.getChessNotaion())
+                            sqSelected = ()
+                            playerClicks = []
+                        else:
+                            print("Not your turn")
+                            sqSelected = ()
+                            playerClicks = []
+                    # key handler
+                elif e.type == p.KEYDOWN:
+                    if e.key == p.K_z: # undo when Z is pressed
+                         gs.undoMove()
                     
             drawGameState(screen , gs)
             clock.tick(MAX_FPS)
@@ -91,6 +102,3 @@ def drawPieces(screen , board):
 
 if __name__ == "__main__":
     main()
-                
-                
-        
