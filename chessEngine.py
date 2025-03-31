@@ -11,14 +11,16 @@ class GameState():
         # and the "--" is the emty spaces
         self.board = [
             ["bR" , "bN" , "bB" , "bQ" , "bK" , "bB" , "bN" , "bR"],
-            ["bp" , "bp" , "bp" , "bp" , "bp" , "bp" , "bp" , "bp"],
+            ["bp" , "bp" , "bp" , "--" , "bp" , "bp" , "bp" , "bp"],
             ["--" , "--" , "--" , "--" , "--" , "--" , "--" , "--"],
             ["--" , "--" , "--" , "--" , "--" , "--" , "--" , "--"],
             ["--" , "--" , "--" , "--" , "--" , "--" , "--" , "--"],
-            ["--" , "--" , "--" , "--" , "--" , "--" , "--" , "--"],
+            ["--" , "--" , "--" , "bp" , "--" , "--" , "--" , "--"],
             ["wp" , "wp" , "wp" , "wp" , "wp" , "wp" , "wp" , "wp"],
-            ["wR" , "wN" , "wB" , "wQ" , "wK" , "wB" , "wN" , "wR"],
-        ]
+            ["wR" , "wN" , "wB" , "wQ" , "wK" , "wB" , "wN" , "wR"],]
+        self.moveFunctions = {'p': self.getPawnMoves, 'R': self.getRookMoves, 'N': self.getKnightMoves,
+                              'B': self.getBishopMoves, 'Q': self.getQueenMoves, 'K': self.getKingMoves}
+        
         self.whiteToMove = True
         self.moveLog = []
 # takes a move as a paramiter and sexcutes it (this doesnt work for casteling, pawn promotion and etc)
@@ -50,15 +52,65 @@ class GameState():
     '''
     
     def getAllPossibleMoves(self):
-        move = []
+        moves = []
         for r in range(len(self.board)):
             for c in range(len(self.board[r])):
-                turn: self.board[r][c][0]
-                if (turn == 'w' and self.whiteToMove) and (turn =='b' and not self.whiteToMove):
+                turn = self.board[r][c][0]
+                if (turn == 'w' and self.whiteToMove) or (turn =='b' and not self.whiteToMove):
                     piece = self.board[r][c][1]
-                    
-                
+                    self.moveFunctions[piece](r, c, moves) # calls the appopriate move function based on piece types
+        return moves 
+                        
+    '''
+    get all the pawns moves for the pawn loacted at row, col and these moves to the lost
+    '''
+    def getPawnMoves(self, r, c, moves):
+        if self.whiteToMove: # white pawn moves
+            if self.board[r-1][c] == "--" : # 1 squre pawn advance
+                moves.append(Move((r, c), (r-1, c), self.board))
+                if r == 6  and self.board[r-2][c] == "--": # 2 square pawn advance
+                     moves.append(Move((r, c), (r-2, c), self.board))
+            if c-1 >= 0: # captures to the left 
+                if self.board[r-1][c-1][0] == 'b' :# enemy piece to capture
+                    moves.append(Move((r, c), (r-1, c-1), self.board))
+            if c+1 < 7 : # captures to the right
+                if self.board[r-1][c+1][0] == 'b':
+                    moves.append(Move((r, c), (r-1, c+1), self.board))
+        else: # black pawn moves
+            pass
     
+    '''
+    get all the rook moves for the rook lacted at rowm col and these moves in the list
+    '''   
+    def getRookMoves(self, r, c, moves):
+        pass
+                
+    '''
+    get all the Knight moves for the rook lacted at rowm col and these moves in the list
+    '''   
+    def getKnightMoves(self, r, c, moves):
+        pass
+                
+    '''
+    get all the Bishop moves for the rook lacted at rowm col and these moves in the list
+    '''   
+    def getBishopMoves(self, r, c, moves):
+        pass
+    
+    '''
+    get all the Queen moves for the rook lacted at rowm col and these moves in the list
+    '''   
+    def getQueenMoves(self, r, c, moves):
+        pass
+    
+    '''
+    get all the King moves for the rook lacted at rowm col and these moves in the list
+    '''   
+    def getKingMoves(self, r, c, moves):
+        pass
+                
+                
+                
         
         
 class Move():
@@ -78,6 +130,20 @@ class Move():
          self.endCol = endSq[1]
          self.pieceMoved = board[self.startRow][self.startCol]
          self.pieceCaptured = board[self.endRow][self.endCol]
+         self.moveID = self.startRow * 1000 + self.startCol * 100 + self.endRow * 10 + self.endCol
+         print(self.moveID)
+         
+         
+    '''
+    overriding the equals method
+    '''
+    
+    def __eq__(self, other):
+        if isinstance(other,Move):
+            return self.moveID == other.moveID
+        return False
+            
+         
          
     def getChessNotaion(self):
         # you can add to make this like real chess notation

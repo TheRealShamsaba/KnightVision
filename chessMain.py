@@ -32,10 +32,14 @@ def main():
         clock = p.time.Clock()
         screen.fill(p.Color("white"))
         gs = chessEngine.GameState()
+        vaildMoves = gs.getVaildMoves()
+        moveMade = False # flag variavle for when move is made
         Load_Images() #only once before while loop
         running = True
         sqSelected = () # no squre  is selected, keep track of the last click of the user (tuple: (row , col))
         playerClicks = [] # keeps track of the player clicks (two tuple)
+        
+        
         while running:
             for e in p.event.get():
                 if e.type == p.QUIT:
@@ -55,8 +59,11 @@ def main():
                         move = chessEngine.Move(playerClicks[0], playerClicks[1], gs.board)
                         piece = gs.board[move.startRow][move.startCol]
                         if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
-                            gs.makeMove(move)
                             print(move.getChessNotaion())
+                            if move in vaildMoves:
+                                gs.makeMove(move)
+                                moveMade = True
+                            
                             sqSelected = ()
                             playerClicks = []
                         else:
@@ -67,6 +74,11 @@ def main():
                 elif e.type == p.KEYDOWN:
                     if e.key == p.K_z: # undo when Z is pressed
                          gs.undoMove()
+                         moveMade = True
+                         
+            if moveMade:
+                vaildMoves = gs.getVaildMoves()
+                moveMade = False
                     
             drawGameState(screen , gs)
             clock.tick(MAX_FPS)
