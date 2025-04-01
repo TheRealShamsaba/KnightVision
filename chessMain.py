@@ -63,13 +63,10 @@ def main():
                             if move in vaildMoves:
                                 gs.makeMove(move)
                                 moveMade = True
-                            
-                            sqSelected = ()
-                            playerClicks = []
+                                sqSelected = ()
+                                playerClicks = []
                         else:
-                            print("Not your turn")
-                            sqSelected = ()
-                            playerClicks = []
+                            playerClicks = [sqSelected]
                     # key handler
                 elif e.type == p.KEYDOWN:
                     if e.key == p.K_z: # undo when Z is pressed
