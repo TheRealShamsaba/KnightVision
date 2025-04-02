@@ -23,8 +23,8 @@ class GameState():
         
         self.whiteToMove = True
         self.moveLog = []
-        self.whiteKingLocation = {7,4}
-        self.blackKingLocation = {0,4}
+        self.whiteKingLocation = (7,4)
+        self.blackKingLocation = (0,4)
 # takes a move as a paramiter and sexcutes it (this doesnt work for casteling, pawn promotion and etc)
 
     def makeMove(self, move):
@@ -49,21 +49,54 @@ class GameState():
             self.whiteToMove = not self.whiteToMove # switch turns back
             # upadte the kings location
             if move.pieceMoved == 'wK':
-             self.whiteKingLocation = (move.endRow , move.endCol)
+                self.whiteKingLocation = (move.startRow , move.startCol)
             elif move.pieceMoved == 'bK':
-             self.blackKingLocation = (move.endRow , move.endCol)
+                self.blackKingLocation = (move.startRow , move.startCol)
 
     '''
     all moves considering checks
     '''
     def getVaildMoves(self):
-        return self.getAllPossibleMoves() # for now will not worry for checks
+        moves = self.getAllPossibleMoves()
+        validMoves = []
+
+        for move in moves:
+            self.makeMove(move)
+            inCheck = self.inCheck()
+            self.undoMove()
+            if not inCheck:
+                validMoves.append(move)
+
+        return validMoves
+    
+    
+       
+    def inCheck(self):   
+        if self.whiteToMove:
+             print('Checking if white is in check')
+             return self.squareUnderAttack(self.whiteKingLocation[0], self.whiteKingLocation[1])
+        else:
+             print('Checking if black is in check')
+             return self.squareUnderAttack(self.blackKingLocation[0], self.blackKingLocation[1])
         
+        
+    '''
+    determine if the enemy can attack the square r ,c 
+    '''    
+    def squareUnderAttack(self, r , c):
+        print(f'Checking if square {r},{c} is under attack...')
+        self.whiteToMove = not self.whiteToMove
+        oppMoves = self.getAllPossibleMoves(includeChecks= False)
+        self.whiteToMove = not self.whiteToMove
+        for move in oppMoves:
+            if move.endRow == r and move.endCol == c:
+             return True
+        return False
     '''
     all moves without considering checks
     '''
     
-    def getAllPossibleMoves(self):
+    def getAllPossibleMoves(self, includeChecks = True):
         moves = []
         for r in range(len(self.board)):
             for c in range(len(self.board[r])):
@@ -71,6 +104,8 @@ class GameState():
                 if (turn == 'w' and self.whiteToMove) or (turn =='b' and not self.whiteToMove):
                     piece = self.board[r][c][1]
                     self.moveFunctions[piece](r, c, moves) # calls the appopriate move function based on piece types
+        if includeChecks:
+            moves = [move for move in moves if not self.squareUnderAttack(move.endRow, move.endCol)]
         return moves 
                         
     '''
@@ -111,7 +146,7 @@ class GameState():
             for i in range(1,8):
                 endRow = r + k[0]*i
                 endCol = c + k[1]*i
-                if 0 < endRow < 8 and 0 <= endCol < 8:
+                if 0 <= endRow < 8 and 0 <= endCol < 8:
                     endPeace = self.board[endRow][endCol]
                     if endPeace == "--":
                         moves.append(Move((r,c), (endRow,endCol), self.board))
@@ -151,9 +186,15 @@ class GameState():
                 endRow = r+ d[0] * i
                 endCol = c + d[1] * i 
                 if 0 <= endRow < 8 and 0 <= endCol < 8 : 
-                  endPiece = self.board[endRow][endCol]
-                  if endPiece == "--" or endPiece[0] == enemyColor:
-                    moves.append(Move((r,c),(endRow, endCol), self.board))
+                    endPiece = self.board[endRow][endCol]
+                    if endPiece == "--":
+                        moves.append(Move((r,c),(endRow, endCol), self.board))
+                    elif endPiece[0] == enemyColor:
+                        moves.append(Move((r, c), (endRow, endCol), self.board))
+                        break
+                    else:
+                        break
+                        
     '''
     get all the Queen moves for the rook lacted at rowm col and these moves in the list
     '''   
@@ -220,4 +261,3 @@ class Move():
         
     def getRankFile(self, r, c):
         return self.colsToFiles[c] + self.rowsToRanks[r]
-        
