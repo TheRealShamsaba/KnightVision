@@ -26,6 +26,8 @@ class GameState():
         self.whiteKingLocation = (7,4)
         self.blackKingLocation = (0,4)
         self.insideSqureUnderAttack = False
+
+            
 # takes a move as a paramiter and sexcutes it (this doesnt work for casteling, pawn promotion and etc)
 
     def makeMove(self, move):
@@ -38,6 +40,8 @@ class GameState():
             self.whiteKingLocation = (move.endRow , move.endCol)
         elif move.pieceMoved == 'bK':
             self.blackKingLocation = (move.endRow , move.endCol)
+        if move.isPawnPromotion:
+            self.board[move.endRow][move.endCol] = move.pieceMoved[0] + move.promotionChoice
         
     """
     undo the last move made
@@ -53,6 +57,9 @@ class GameState():
                 self.whiteKingLocation = (move.startRow , move.startCol)
             elif move.pieceMoved == 'bK':
                 self.blackKingLocation = (move.startRow , move.startCol)
+            if move.isPawnPromotion:
+                self.board[move.startRow][move.startCol] = move.pieceMoved
+                self.board[move.endRow][move.endCol] = move.pieceCaptured
 
     '''
     all moves considering checks
@@ -163,8 +170,6 @@ class GameState():
                 if endPiece[0] == enemyColor and endPiece[1] == "N":
                     inCheck = True
                     checks.append((endRow, endCol, m[0], m[1]))
-        print("Pins detected:", pins)
-        print("checks detected:", checks)
         return inCheck, pins, checks
             
                        
@@ -334,8 +339,24 @@ class GameState():
                 endPiece = self.board[endRow][endCol]
                 if endPiece == "--" or endPiece[0] != allyColor:
                     # Only add the king move if the destination square is not under attack
-                    if not self.squareUnderAttack(endRow, endCol):
-                        moves.append(Move((r, c), (endRow, endCol), self.board))
+                    originalSqure = self.board[endRow][endCol]
+                    self.board[r][c] = "--"
+                    self.board[endRow][endCol] = ('wK' if self.whiteToMove else 'bK')
+                    originalKingLoc = self.whiteKingLocation if self.whiteToMove else self.blackKingLocation
+                    if self.whiteToMove:
+                        self.whiteKingLocation = (endRow, endCol)
+                    else:
+                        self.blackKingLocation = (endRow, endCol)
+                    inCheck = self.squareUnderAttack(endRow, endCol)
+                    self.board[r][c] = self.board[endRow][endCol]
+                    self.board[endRow][endCol] = originalSqure
+                    if self.whiteToMove:
+                        self.whiteKingLocation = originalKingLoc
+                    else:
+                        self.blackKingLocation = originalKingLoc
+                    if not inCheck:
+                        moves.append(Move((r,c), (endRow, endCol), self.board))
+                    
                     
     def addPieceMovesConsideringPins(self, piece, r, c, moves, pins):
         isPinned = False
@@ -382,9 +403,13 @@ class Move():
          self.endCol = endSq[1]
          self.pieceMoved = board[self.startRow][self.startCol]
          self.pieceCaptured = board[self.endRow][self.endCol]
+         self.isPawnPromotion = False
+         if self.pieceMoved[1] == 'p':
+             if (self.pieceMoved[0] == 'w' and self.endRow == 0) or \
+                (self.pieceMoved[0] == 'b' and self.endRow == 7):
+                 self.isPawnPromotion = True
          self.moveID = self.startRow * 1000 + self.startCol * 100 + self.endRow * 10 + self.endCol
-         print(self.moveID)
-         
+         self.promotionChoice = 'Q'  # default promotion
          
     '''
     overriding the equals method
