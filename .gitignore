@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Conda and virtual environments
+.conda/
+env/
+venv/
+.venv/
+
+# PyTorch model checkpoints and training artifacts
+*.pth
+runs/
+
+# Image output or datasets
+images/
+
+# Log files and outputs
+*.log
+
+# VS Code settings
+.vscode/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Python package files
+*.egg-info/
+dist/
+build/
+
+# Ignore arc.png if it's just a UI image or diagram
+arc.png
