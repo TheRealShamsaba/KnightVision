@@ -32,7 +32,10 @@ def main():
         clock = p.time.Clock()
         screen.fill(p.Color("white"))
         gs = chessEngine.GameState()
-        vaildMoves = gs.getVaildMoves()
+        validMoves = gs.getValidMoves()  # Make sure the method name is correctly spelled if necessary
+        print("Valid Moves:")
+        for move in validMoves:
+            print(move.getChessNotation())
         moveMade = False # flag variavle for when move is made
         Load_Images() #only once before while loop
         running = True
@@ -56,16 +59,22 @@ def main():
                         sqSelected = (row , col)
                         playerClicks.append(sqSelected) # appended for both 1st and 2nd clicks
                     if len(playerClicks) == 2:  # after the second click
-                        move = chessEngine.Move(playerClicks[0], playerClicks[1], gs.board)
-                        piece = gs.board[move.startRow][move.startCol]
-                        if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
-                            print(move.getChessNotaion())
-                            if move in vaildMoves:
-                                gs.makeMove(move)
-                                moveMade = True
-                                sqSelected = ()
-                                playerClicks = []
+                        moveMade = False
+                        for mv in validMoves:
+                            if mv.startRow == playerClicks[0][0] and mv.startCol == playerClicks[0][1] and \
+                               mv.endRow == playerClicks[1][0] and mv.endCol == playerClicks[1][1]:
+                                piece = gs.board[mv.startRow][mv.startCol]
+                                if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
+                                    print(f"Attempting move: {mv.getChessNotation()}")
+                                    gs.makeMove(mv)
+                                    validMoves = gs.getValidMoves()
+                                    moveMade = True
+                                break
+                        if moveMade:
+                            sqSelected = ()
+                            playerClicks = []
                         else:
+                            print("Move not valid")
                             playerClicks = [sqSelected]
                     # key handler
                 elif e.type == p.KEYDOWN:
@@ -74,19 +83,19 @@ def main():
                          moveMade = True
                          
             if moveMade:
-                vaildMoves = gs.getVaildMoves()
+                validMoves = gs.getValidMoves()
                 moveMade = False
                     
-            drawGameState(screen , gs)
+            drawGameState(screen , gs, validMoves, sqSelected)
             clock.tick(MAX_FPS)
             p.display.flip()
 """
 responsible for all the graphics within a current game state
 """
 
-def drawGameState(screen, gs):
-    drawBoard(screen) #draw squres on board
-    #add in piece gihlighting or move suggestions (later)
+def drawGameState(screen, gs, validMoves, sqSelected):
+    drawBoard(screen)
+    highlightSquares(screen, gs, validMoves, sqSelected)
     drawPieces(screen, gs.board)
     
     
@@ -107,6 +116,21 @@ def drawPieces(screen , board):
             piece = board[r][c]
             if piece != "--" : # not empty square
                 screen.blit(IMAGES[piece], p.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+
+
+# highlight squares for selected piece and valid moves
+def highlightSquares(screen, gs, validMoves, sqSelected):
+    if sqSelected != ():
+        r, c = sqSelected
+        if gs.board[r][c][0] == ('w' if gs.whiteToMove else 'b'):
+            s = p.Surface((SQ_SIZE, SQ_SIZE))
+            s.set_alpha(100)
+            s.fill(p.Color('blue'))
+            screen.blit(s, (c * SQ_SIZE, r * SQ_SIZE))
+            s.fill(p.Color('yellow'))
+            for move in validMoves:
+                if move.startRow == r and move.startCol == c:
+                    screen.blit(s, (move.endCol * SQ_SIZE, move.endRow * SQ_SIZE))
 
 
 if __name__ == "__main__":
