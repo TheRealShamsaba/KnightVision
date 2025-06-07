@@ -23,73 +23,75 @@ def Load_Images():
         IMAGES[piece] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE))
     #Note: we can access an image by sayin 'IMAGES['wp'] 
     
-    """
-    the main driver for our code. this will handel user input and updating the graphics
-    """
-    
 def main():
-        p.init()
-        screen = p.display.set_mode((WIDTH, HEIGHT))
-        clock = p.time.Clock()
-        screen.fill(p.Color("white"))
-        gs = chessEngine.GameState()
-        validMoves = gs.getValidMoves()  # Make sure the method name is correctly spelled if necessary
-        print("Valid Moves:")
-        for move in validMoves:
-            print(move.getChessNotation())
-        moveMade = False # flag variavle for when move is made
-        Load_Images() #only once before while loop
-        running = True
-        sqSelected = () # no squre  is selected, keep track of the last click of the user (tuple: (row , col))
-        playerClicks = [] # keeps track of the player clicks (two tuple)
-        
-        
-        while running:
-            for e in p.event.get():
-                if e.type == p.QUIT:
-                    running = False
-                # mouse handler
-                elif e.type == p.MOUSEBUTTONDOWN:
-                    location = p.mouse.get_pos() # (x,y) location of mouse
-                    col = location[0]//SQ_SIZE
-                    row = location[1]//SQ_SIZE
-                    if sqSelected  == (row , col):
-                        sqSelected = () #deselect
+    """
+    the main driver for our code. this will handle user input and updating the graphics
+    """
+    p.init()
+    screen = p.display.set_mode((WIDTH, HEIGHT))
+    clock = p.time.Clock()
+    screen.fill(p.Color("white"))
+    gs = chessEngine.GameState()
+
+    validMoves = gs.getValidMoves()  # Make sure the method name is correctly spelled if necessary
+    print("Valid Moves:")
+    for move in validMoves:
+        print(move.getChessNotation())
+    moveMade = False # flag variable for when move is made
+    Load_Images() # only once before while loop
+    running = True
+    sqSelected = () # no square is selected, keep track of the last click of the user (tuple: (row , col))
+    playerClicks = [] # keeps track of the player clicks (two tuple)
+
+    while running:
+        for e in p.event.get():
+            if e.type == p.QUIT:
+                running = False
+            # mouse handler
+            elif e.type == p.MOUSEBUTTONDOWN:
+                location = p.mouse.get_pos() # (x,y) location of mouse
+                col = location[0]//SQ_SIZE
+                row = location[1]//SQ_SIZE
+                if sqSelected  == (row , col):
+                    sqSelected = () #deselect
+                    playerClicks = []
+                else:
+                    sqSelected = (row , col)
+                    playerClicks.append(sqSelected) # appended for both 1st and 2nd clicks
+                if len(playerClicks) == 2:  # after the second click
+                    moveMade = False
+                    for mv in validMoves:
+                        if mv.startRow == playerClicks[0][0] and mv.startCol == playerClicks[0][1] and \
+                           mv.endRow == playerClicks[1][0] and mv.endCol == playerClicks[1][1]:
+                            piece = gs.board[mv.startRow][mv.startCol]
+                            if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
+                                print(f"Attempting move: {mv.getChessNotation()}")
+                                gs.makeMove(mv)
+                                if mv.getChessNotation() == "e1c1":  # White queenside castling
+                                    gs.board[7][0] = "--"
+                                    gs.board[7][3] = "wR"
+                                validMoves = gs.getValidMoves()
+                                moveMade = True
+                            break
+                    if moveMade:
+                        sqSelected = ()
                         playerClicks = []
                     else:
-                        sqSelected = (row , col)
-                        playerClicks.append(sqSelected) # appended for both 1st and 2nd clicks
-                    if len(playerClicks) == 2:  # after the second click
-                        moveMade = False
-                        for mv in validMoves:
-                            if mv.startRow == playerClicks[0][0] and mv.startCol == playerClicks[0][1] and \
-                               mv.endRow == playerClicks[1][0] and mv.endCol == playerClicks[1][1]:
-                                piece = gs.board[mv.startRow][mv.startCol]
-                                if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
-                                    print(f"Attempting move: {mv.getChessNotation()}")
-                                    gs.makeMove(mv)
-                                    validMoves = gs.getValidMoves()
-                                    moveMade = True
-                                break
-                        if moveMade:
-                            sqSelected = ()
-                            playerClicks = []
-                        else:
-                            print("Move not valid")
-                            playerClicks = [sqSelected]
-                    # key handler
-                elif e.type == p.KEYDOWN:
-                    if e.key == p.K_z: # undo when Z is pressed
-                         gs.undoMove()
-                         moveMade = True
-                         
-            if moveMade:
-                validMoves = gs.getValidMoves()
-                moveMade = False
-                    
-            drawGameState(screen , gs, validMoves, sqSelected)
-            clock.tick(MAX_FPS)
-            p.display.flip()
+                        print("Move not valid")
+                        playerClicks = [sqSelected]
+            # key handler
+            elif e.type == p.KEYDOWN:
+                if e.key == p.K_z: # undo when Z is pressed
+                    gs.undoMove()
+                    moveMade = True
+
+        if moveMade:
+            validMoves = gs.getValidMoves()
+            moveMade = False
+
+        drawGameState(screen , gs, validMoves, sqSelected)
+        clock.tick(MAX_FPS)
+        p.display.flip()
 """
 responsible for all the graphics within a current game state
 """
