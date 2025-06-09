@@ -83,6 +83,7 @@ class GameState():
                 self.board[move.endRow][move.endCol - 2] = "--"
 
         # Update enPassantPossible
+        self.enPassantPossibleLog.append(self.enPassantPossible)
         if move.pieceMoved[1] == 'p' and abs(move.startRow - move.endRow) == 2:
             self.enPassantPossible = ((move.startRow + move.endRow) // 2, move.startCol)
         else:
@@ -144,6 +145,11 @@ class GameState():
             if move.isEnPassantMove:
                 self.board[move.endRow][move.endCol] = "--"
                 self.board[move.startRow][move.endCol] = move.pieceCaptured
+            # Restore enPassantPossible
+            if self.enPassantPossibleLog:
+                self.enPassantPossible = self.enPassantPossibleLog.pop()
+            else:
+                self.enPassantPossible = ()
                 
     '''
     all moves considering checks
