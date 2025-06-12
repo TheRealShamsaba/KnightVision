@@ -2,9 +2,12 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import random
+import logging
 from datetime import datetime
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 from torch.utils.tensorboard import SummaryWriter
+
+logger = logging.getLogger(__name__)
 
 def train_model(model, data, epochs=100, batch_size=32, lr=1e-3):
     writer = SummaryWriter(log_dir=f"runs/chess_rl_{datetime.now().strftime('%Y%m%d-%H%M%S')}")
@@ -70,7 +73,13 @@ def train_model(model, data, epochs=100, batch_size=32, lr=1e-3):
         for name, param in model.named_parameters():
             writer.add_histogram(f"Weights/{name}", param, epoch)
 
-        print(f"Epoch {epoch+1}/{epochs} - Loss: {total_loss:.4f} - Avg Reward: {total_reward / len(data):.4f}")
+        logger.info(
+            "Epoch %s/%s - Loss: %.4f - avg Reward: %.4f",
+            epoch + 1,
+            epochs,
+            total_loss,
+            total_reward / len(data),
+        )
 
     writer.close()
     return {

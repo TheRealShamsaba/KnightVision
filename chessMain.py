@@ -2,9 +2,12 @@
 This is our main driver file. it will be responsible for handling user input and displaying current GameState Object
 """
 
-import pygame as p 
+import pygame as p
 
 import chessEngine
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 WIDTH = HEIGHT = 512
@@ -34,9 +37,9 @@ def main():
     gs = chessEngine.GameState()
 
     validMoves = gs.getValidMoves()  # Make sure the method name is correctly spelled if necessary
-    print("Valid Moves:")
+    logger.debug("valid Moves:")
     for move in validMoves:
-        print(move.getChessNotation())
+        logger.debug(move.getChessNotation())
     moveMade = False # flag variable for when move is made
     Load_Images() # only once before while loop
     running = True
@@ -65,7 +68,7 @@ def main():
                            mv.endRow == playerClicks[1][0] and mv.endCol == playerClicks[1][1]:
                             piece = gs.board[mv.startRow][mv.startCol]
                             if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
-                                print(f"Attempting move: {mv.getChessNotation()}")
+                                logger.debug("Attempting move: %s", mv.getChessNotation())
                                 gs.makeMove(mv)
                                 if mv.getChessNotation() == "e1c1":  # White queenside castling
                                     gs.board[7][0] = "--"
@@ -77,7 +80,7 @@ def main():
                         sqSelected = ()
                         playerClicks = []
                     else:
-                        print("Move not valid")
+                        logger.debug("move not valid")
                         playerClicks = [sqSelected]
             # key handler
             elif e.type == p.KEYDOWN:

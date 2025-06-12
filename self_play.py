@@ -4,7 +4,11 @@ from chessEngine import GameState
 from ai import encode_board, encode_move
 import random
 import torch
+import logging
 from model import ChessNet
+
+logger = logging.getLogger(__name__)
+
 
 def self_play(model, num_games=100):
     data = []
@@ -20,8 +24,8 @@ def self_play(model, num_games=100):
 
             board_tensor = torch.tensor([encode_board(gs.board)]).float()
             with torch.no_grad():
-                policy, _ = model(board_tensor)
-            policy = policy.squeeze().cpu().numpy()
+                policy_logits, _ = model(board_tensor)
+            policy = torch.softmax(policy_logits.squeeze(), dim = 0).cpu().numpy()
 
             legal_indices = [encode_move(m.startRow, m.startCol, m.endRow, m.endCol) for m in valid_moves]
             legal_probs = [policy[i] for i in legal_indices]
@@ -57,4 +61,4 @@ if __name__ == "__main__":
     model = ChessNet()
     model.load_state_dict(torch.load("model.pth"))  # Replace with your model file
     data = self_play(model, num_games=50)
-    print("Generated", len(data), "samples from self-play")
+    logger.info("Generated %s samples from self-play", len(data))
