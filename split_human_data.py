@@ -1,7 +1,13 @@
-import os
+import sys
+from pathlib import Path
 
-input_path = "data/games.jsonl"
-output_dir = "data/human_batches"
+if "google.colab" in sys.modules:
+    BASE_DIR = "/content/drive/MyDrive/KnightVision/basicChess"
+else:
+    BASE_DIR = str(Path(__file__).resolve().parent)
+import os
+input_path = os.path.join(BASE_DIR, "data/games.jsonl")
+output_dir = os.path.join(BASE_DIR, "data/human_batches")
 lines_per_file = 100  # 1 million per file
 
 os.makedirs(output_dir, exist_ok=True)

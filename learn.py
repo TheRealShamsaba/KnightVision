@@ -1,7 +1,4 @@
-
 import sys
-sys.path.append('/content/KnightVision/basicChess')  # for module resolution
-
 import os
 import json
 import torch
@@ -14,13 +11,17 @@ import logging
 import traceback
 import zipfile
 import psutil
-from google.colab import drive
 
 print("Script loaded", flush=True)
 
 # === SETUP ===
-drive.mount('/content/drive')
-drive_checkpoint_dir = "/content/drive/MyDrive/KnightVision_Checkpoints"
+try:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+except ImportError:
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+drive_checkpoint_dir = os.path.join(BASE_DIR, "checkpoints")
 os.makedirs(drive_checkpoint_dir, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO)
@@ -46,14 +47,14 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     logger.info("Loading dataset from games.jsonl...")
     import time
     run_id = str(int(time.time()))
-    log_dir = os.path.join("runs", "chess_rl_v2", run_id)
+    log_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", run_id)
     os.makedirs(log_dir, exist_ok=True)
     checkpoint_dir = os.path.join(log_dir, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     checkpoints_meta = []
 
-    def cleanup_old_sessions(base_dir="runs/chess_rl_v2", keep_last=3):
+    def cleanup_old_sessions(base_dir=os.path.join(BASE_DIR, "runs", "chess_rl_v2"), keep_last=3):
         subdirs = sorted([os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))], reverse=True)
         for dir_to_remove in subdirs[keep_last:]:
             import shutil
@@ -66,7 +67,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     writer.add_scalar("Debug/Start", 1.0, 0)
     writer.flush()
 
-    def stream_human_data(file_path="data/games.jsonl", chunk_size=16, max_lines=1_000_000):
+    def stream_human_data(file_path=os.path.join(BASE_DIR, "data", "games.jsonl"), chunk_size=16, max_lines=1_000_000):
         with open(file_path, "r") as f:
             chunk = []
             for i, line in enumerate(f):

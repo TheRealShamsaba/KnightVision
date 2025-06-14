@@ -2,6 +2,14 @@
 # Self-play script loaded...
 print("Self-play script loaded...")
 
+import os
+try:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+except ImportError:
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 from chessEngine import GameState
 from ai import encode_board, encode_move
 import random
@@ -76,6 +84,6 @@ def piece_value(piece):
 
 if __name__ == "__main__":
     model = ChessNet()
-    model.load_state_dict(torch.load("model.pth"))  # Replace with your model file
+    model.load_state_dict(torch.load(os.path.join(BASE_DIR, "checkpoints", "model.pth")))  # Replace with your model file
     data = self_play(model, num_games=50)
     logger.info("Generated %s samples from self-play", len(data))

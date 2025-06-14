@@ -1,9 +1,16 @@
 import os
+try:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+except ImportError:
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 import chess.pgn
 import chess
 import json
 
-PARSED_LOG = "data/parsed_files.log"
+PARSED_LOG = os.path.join(BASE_DIR, "data", "parsed_files.log")
 
 def get_parsed_files():
     if os.path.exists(PARSED_LOG):
@@ -42,7 +49,7 @@ def extract_data_from_pgn(pgn_path):
     except Exception as e:
         print(f"Failed to parse {pgn_path}: {e}")
 
-def parse_all_games(pgn_dir="data/pgn", output_path="data/games.jsonl"):
+def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=os.path.join(BASE_DIR, "data", "games.jsonl")):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     parsed_files = get_parsed_files()
     with open(output_path, 'a', encoding='utf-8') as out_file:

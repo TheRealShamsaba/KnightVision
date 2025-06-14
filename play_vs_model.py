@@ -2,6 +2,13 @@
 
 import pygame as p
 import torch
+import os
+try:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+except ImportError:
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 from chessEngine import GameState
 import chessMain
 from ai import encode_board, encode_move
@@ -18,7 +25,7 @@ AI_MOVE_DELAY_MS = 4000  # 4-second delay to allow the player to follow the game
 def loadImages():
     pieces = ["wP", "wR", "wN", "wB", "wQ", "wK", "bP", "bR", "bN", "bB", "bQ", "bK"]
     for piece in pieces:
-        IMAGES[piece.lower()] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE))
+        IMAGES[piece.lower()] = p.transform.scale(p.image.load(os.path.join(BASE_DIR, "images", piece + ".png")), (SQ_SIZE, SQ_SIZE))
 
 loadImages()
 chessMain.IMAGES = IMAGES
@@ -46,9 +53,8 @@ def main():
     clock = p.time.Clock()
     screen.fill(p.Color("white"))
     gs = GameState()
-    import os
 
-    def get_latest_checkpoint(checkpoint_dir="checkpoints"):
+    def get_latest_checkpoint(checkpoint_dir=os.path.join(BASE_DIR, "checkpoints")):
         checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.endswith(".pth")]
         if not checkpoint_files:
             raise FileNotFoundError("No checkpoint found in 'checkpoints' directory.")

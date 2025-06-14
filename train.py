@@ -1,7 +1,13 @@
 print("Training script loaded...")
 import os
+try:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+except ImportError:
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 run_name = "chess_rl_v2"
-checkpoint_dir = os.path.join("runs", run_name, "checkpoints")
+checkpoint_dir = os.path.join(BASE_DIR, "runs", run_name, "checkpoints")
 os.makedirs(checkpoint_dir, exist_ok=True)
 import torch
 import torch.nn.functional as F
@@ -20,7 +26,7 @@ from torch.utils.tensorboard import SummaryWriter
 logger = logging.getLogger(__name__)
 
 class ChessPGNDataset(Dataset):
-    def __init__(self, path="data/games.jsonl", move_encoder=None, max_samples=10000):
+    def __init__(self, path=os.path.join(BASE_DIR, "data", "games.jsonl"), move_encoder=None, max_samples=10000):
         self.file_path = path
         self.move_encoder = move_encoder or self.default_move_encoder
         self.max_samples = max_samples
@@ -86,12 +92,12 @@ def custom_collate(batch):
     return boards, moves, outcomes
 
 model = ChessNet()
-dataset = ChessPGNDataset('data/games.jsonl', max_samples=10000)
+dataset = ChessPGNDataset(os.path.join(BASE_DIR, "data", "games.jsonl"), max_samples=1000000)
 dataloader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
                 
 
-def train_model(model, dataloader, epochs=100, lr=1e-3):
-    writer = SummaryWriter(log_dir=os.path.join("runs", run_name))
+def train_model(model, dataloader, epochs=10000, lr=1e-3):
+    writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
