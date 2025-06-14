@@ -1,5 +1,10 @@
 print("Training script loaded...")
 import os
+try:
+    import google.colab
+    IN_COLAB = True
+except ImportError:
+    IN_COLAB = False
 BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 run_name = "chess_rl_v2"
 checkpoint_dir = os.path.join(BASE_DIR, "runs", run_name, "checkpoints")
@@ -198,7 +203,15 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         "scores": all_scores
     }
 
-import telegram
+if IN_COLAB:
+    try:
+        import telegram
+    except ImportError:
+        import subprocess
+        subprocess.run(["pip", "install", "python-telegram-bot==13.15"])
+        import telegram
+else:
+    import telegram
 
 telegram_token = os.getenv("TELEGRAM_TOKEN")
 telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
