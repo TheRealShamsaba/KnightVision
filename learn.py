@@ -38,6 +38,7 @@ import requests
 def send_telegram_message(msg):
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
     telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    print(f"🧪 DEBUG: TELEGRAM_BOT_TOKEN={telegram_token}, TELEGRAM_CHAT_ID={telegram_chat_id}")
     if not telegram_token or not telegram_chat_id:
         logger = logging.getLogger(__name__)
         logger.warning("⚠️ Telegram token or chat ID not set.")
@@ -49,6 +50,7 @@ def send_telegram_message(msg):
         "parse_mode": "Markdown"
     }
     try:
+        print(f"📡 Sending to Telegram: {url} with chat_id={telegram_chat_id}")
         requests.post(url, data=data)
         print(f"📤 Sent Telegram message: {msg}")
     except Exception as e:
