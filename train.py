@@ -10,6 +10,14 @@ run_name = "chess_rl_v2"
 checkpoint_dir = os.path.join(BASE_DIR, "runs", run_name, "checkpoints")
 os.makedirs(checkpoint_dir, exist_ok=True)
 import torch
+try:
+    import tensorflow as tf
+    physical_devices = tf.config.list_physical_devices('GPU')
+    if physical_devices:
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        print("✅ TensorFlow GPU memory growth enabled")
+except Exception as e:
+    print(f"⚠️ TensorFlow GPU config failed: {e}")
 import torch.nn.functional as F
 import torch.optim as optim
 import random
@@ -86,14 +94,14 @@ from model import ChessNet
 # Custom collate function for DataLoader
 def custom_collate(batch):
     boards, moves, outcomes = zip(*batch)
-    boards = torch.from_numpy(np.stack(boards)).float()
-    moves = torch.tensor(moves).long()
-    outcomes = torch.tensor(outcomes).float()
+    boards = torch.from_numpy(np.stack(boards)).float().to(device)
+    moves = torch.tensor(moves).long().to(device)
+    outcomes = torch.tensor(outcomes).float().to(device)
     return boards, moves, outcomes
 
 model = ChessNet()
 dataset = ChessPGNDataset(os.path.join(BASE_DIR, "data", "games.jsonl"), max_samples=1000000)
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
+dataloader = DataLoader(dataset, batch_size=512, shuffle=True, collate_fn=custom_collate, pin_memory=True)
                 
 
 def train_model(model, dataloader, epochs=10000, lr=1e-3):

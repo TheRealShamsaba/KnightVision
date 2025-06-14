@@ -134,6 +134,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         logger.info(f"🧩 Total human batches: {len(batch_files)}")
 
         for batch_path in batch_files:
+            import tensorflow as tf
+            tf_logs = tf.summary.create_file_writer(log_dir)
+            send_telegram_message(f"🧠 Starting training on batch file: {os.path.basename(batch_path)} (Step {global_step})")
             logger.info(f"📥 Loading human data from {batch_path}")
             with open(batch_path, "r") as f:
                 human_data = [json.loads(line) for line in f]
@@ -203,8 +206,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 "👶 KnightVision IQ: now higher than a pigeon’s. Progress!"
             ]
 
-            import tensorflow as tf
-            tf_logs = tf.summary.create_file_writer(log_dir)
             total_scalars = 0
             tf_event_files = [f for f in os.listdir(log_dir) if f.startswith("events.out.tfevents.")]
             if tf_event_files:
@@ -230,9 +231,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             )
 
             send_telegram_message(telegram_msg)
-            # --- Progress alert every 5 steps ---
-            if global_step % 5 == 0:
-                send_telegram_message(f"📦 Still training... Just completed step {global_step}.")
+            send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")
+            # --- Progress alert every 2 steps ---
+            if global_step % 2 == 0:
+                send_telegram_message(f"📶 Progress ping: completed step {global_step}.")
             # --- End Telegram notification block ---
 
             logger.info(f"⏱️ Batch time: {format_duration(batch_time)} | RAM Used: {mem_used:.2f} MB")
