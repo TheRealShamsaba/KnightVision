@@ -240,7 +240,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         "scores": all_scores
     }
 
-telegram_token = os.getenv("TELEGRAM_TOKEN")
+telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
 telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
 def send_telegram_message(message):

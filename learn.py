@@ -36,7 +36,7 @@ import random
 import requests
 
 def send_telegram_message(msg):
-    telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
     telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
     print(f"🧪 DEBUG: TELEGRAM_BOT_TOKEN={telegram_token}, TELEGRAM_CHAT_ID={telegram_chat_id}")
     if not telegram_token or not telegram_chat_id:
@@ -143,6 +143,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     checkpoints_meta = []
 
     model = load_or_initialize_model(model_path)
+    print(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
     send_telegram_message("📦 Model loaded and ready. Beginning reinforcement loop...")
 
     for i in range(iterations):
