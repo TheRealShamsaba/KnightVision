@@ -1,5 +1,11 @@
 import sys
 import os
+def is_colab():
+    try:
+        import google.colab
+        return True
+    except ImportError:
+        return False
 import json
 import torch
 from datetime import datetime
@@ -27,11 +33,13 @@ from train import train_model
 print("✅ Script loaded.", flush=True)
 
 # === SETUP ===
-base_dir_env = os.getenv("BASE_DIR")
-if base_dir_env:
-    BASE_DIR = base_dir_env
+if is_colab():
+    from google.colab import drive
+    drive.mount('/content/drive', force_remount=True)
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
 else:
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    base_dir_env = os.getenv("BASE_DIR")
+    BASE_DIR = base_dir_env if base_dir_env else os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 DATA_DIR = os.path.join(BASE_DIR, "data")
