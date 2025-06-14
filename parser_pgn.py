@@ -26,7 +26,6 @@ except (ImportError, AttributeError, ModuleNotFoundError):
 import chess.pgn
 import chess
 import json
-import requests
 
 PARSED_LOG = os.path.join(BASE_DIR, "data", "parsed_files.log")
 
@@ -86,6 +85,10 @@ def extract_data_from_pgn(pgn_path):
         print(f"Failed to parse {pgn_path}: {e}")
 
 def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=os.path.join(BASE_DIR, "data", "games.jsonl")):
+    if not os.path.exists(pgn_dir):
+        notify_bot(f"❌ PGN directory not found: {pgn_dir}")
+        print(f"❌ PGN directory not found: {pgn_dir}")
+        return
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     parsed_files = get_parsed_files()
     with open(output_path, 'a', encoding='utf-8') as out_file:
