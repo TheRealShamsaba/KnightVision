@@ -8,7 +8,7 @@ else:
 import os
 input_path = os.path.join(BASE_DIR, "data/games.jsonl")
 output_dir = os.path.join(BASE_DIR, "data/human_batches")
-lines_per_file = 100  # 1 million per file
+lines_per_file = 100000  # 1 million per file
 
 os.makedirs(output_dir, exist_ok=True)
 

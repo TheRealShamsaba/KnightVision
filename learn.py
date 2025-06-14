@@ -94,22 +94,31 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         selfplay_data = self_play(model, num_games=games_per_iter)
         logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
 
-        for human_chunk in stream_human_data(chunk_size=1):
-            for sample in human_chunk:
-                combined_data = selfplay_data + [sample]
-                result = train_model(model, combined_data, epochs=epochs)
-                avg_loss = sum(result['losses']) / len(result['losses'])
+        human_batches_path = os.path.join(DATA_DIR, "human_batches")
+        batch_files = sorted([
+            os.path.join(human_batches_path, f) for f in os.listdir(human_batches_path)
+            if f.startswith("games_part_") and f.endswith(".jsonl")
+        ])
 
-                writer.add_scalar("Training/Avg_Loss", avg_loss, global_step)
-                writer.add_scalar("Training/SelfPlay_Size", len(selfplay_data), global_step)
-                writer.add_scalar("Training/Combined_Sample_Size", len(combined_data), global_step)
-                writer.flush()
+        for batch_path in batch_files:
+            logger.info(f"📥 Loading human data from {batch_path}")
+            with open(batch_path, "r") as f:
+                human_data = [json.loads(line) for line in f]
 
-                ckpt_path = os.path.join(checkpoint_dir, f"model_step_{global_step}.pth")
-                torch.save(model.state_dict(), ckpt_path)
-                torch.save(model.state_dict(), drive_checkpoint_path)
-                checkpoints_meta.append((global_step, avg_loss))
-                global_step += 1
+            combined_data = selfplay_data + human_data
+            result = train_model(model, combined_data, epochs=epochs)
+            avg_loss = sum(result['losses']) / len(result['losses'])
+
+            writer.add_scalar("Training/Avg_Loss", avg_loss, global_step)
+            writer.add_scalar("Training/SelfPlay_Size", len(selfplay_data), global_step)
+            writer.add_scalar("Training/Human_Batch_Size", len(human_data), global_step)
+            writer.flush()
+
+            ckpt_path = os.path.join(checkpoint_dir, f"model_step_{global_step}.pth")
+            torch.save(model.state_dict(), ckpt_path)
+            torch.save(model.state_dict(), drive_checkpoint_path)
+            checkpoints_meta.append((global_step, avg_loss))
+            global_step += 1
 
         torch.save(model.state_dict(), model_path)
         logger.info(f"📦 Model saved after iteration {i+1}")
