@@ -4,12 +4,19 @@ print("Self-play script loaded...")
 
 try:
     import google.colab
+    IN_COLAB = True
+except ImportError:
+    IN_COLAB = False
+
+if IN_COLAB:
     from google.colab import drive
     drive.mount("/content/drive", force_remount=True)
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
+else:
     print("📦 Not running in Colab — skipping drive.mount")
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    from dotenv import load_dotenv
+    load_dotenv()
+    BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from chessEngine import GameState
 from ai import encode_board, encode_move
