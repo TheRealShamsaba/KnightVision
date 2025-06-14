@@ -249,6 +249,21 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             )
 
             send_telegram_message(telegram_msg)
+            # Construct detailed telegram_msg as in train.py before sending the simple message
+            telegram_msg = (
+                f"♟️ *KnightVision Training Report — Step {global_step}*\n"
+                f"🏋️‍♂️ *Games Played:* {len(selfplay_data)} self-play | {len(human_data)} human\n"
+                f"🧠 *Avg Loss:* `{avg_loss:.5f}` | 📉 Getting sharper!\n"
+                f"🚀 *Step Time:* {format_duration(batch_time)}\n"
+                f"💾 *RAM Used:* {mem_used:.2f} MB\n"
+                f"📈 *TF Scalars Logged:* {total_scalars}\n"
+                f"📦 *Model Saved:* Step_{global_step}.pth ✅\n\n"
+                f"🧪 *Experiment:* Iteration {i+1}/{iterations}\n"
+                f"🔥 Training with love, neurons, and caffeinated weights.\n"
+                f"🧬 Stay tuned, the brain is evolving... 👾\n\n"
+                + random.choice(fun_endings)
+            )
+            send_telegram_message(telegram_msg)
             send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")
             send_telegram_message(f"📤 Uploaded model checkpoint for step {global_step}. Ready for next batch.")
             # --- Progress alert every step ---
