@@ -1,4 +1,19 @@
 import os
+import requests
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+def send_telegram_message(message):
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        print("❌ Telegram credentials not set in environment.")
+        return
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": message}
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"❌ Failed to send Telegram message: {e}")
 try:
     from google.colab import drive
     drive.mount('/content/drive')
@@ -9,8 +24,21 @@ except ImportError:
 import chess.pgn
 import chess
 import json
+import requests
 
 PARSED_LOG = os.path.join(BASE_DIR, "data", "parsed_files.log")
+
+TELEGRAM_BOT_TOKEN = "7763609017:AAHy0XmTNvRbHRhbDu3Btxixttdj6wRnV9I"
+TELEGRAM_CHAT_ID = "5249977605"
+
+def notify_bot(message):
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            data={"chat_id": TELEGRAM_CHAT_ID, "text": message}
+        )
+    except Exception as e:
+        print(f"❌ Failed to send message to bot: {e}")
 
 def get_parsed_files():
     if os.path.exists(PARSED_LOG):
@@ -50,6 +78,7 @@ def extract_data_from_pgn(pgn_path):
                     count += 1
                     if count % 100000 == 0:
                         print(f"🕹️ Parsed {count:,} moves so far...")
+                        notify_bot(f"🕹️ Parsed {count:,} moves so far from {pgn_path}")
 
     except Exception as e:
         print(f"Failed to parse {pgn_path}: {e}")
@@ -61,6 +90,7 @@ def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=o
         for filename in os.listdir(pgn_dir):
             if filename.endswith(".pgn") and filename not in parsed_files:
                 print(f"Parsing {filename}...")
+                notify_bot(f"🤖 Starting to parse: {filename}")
                 pgn_path = os.path.join(pgn_dir, filename)
                 count = 0
                 for record in extract_data_from_pgn(pgn_path):
@@ -68,6 +98,11 @@ def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=o
                     count += 1
                 mark_file_parsed(filename)
                 print(f"✅ Finished parsing {filename}")
+                notify_bot(f"✅ Done parsing {filename} ({count} moves)")
 
 if __name__ == "__main__":
     parse_all_games()
+
+# Reminder: Set the required environment variables before running this script:
+# export TELEGRAM_BOT_TOKEN=your_bot_token
+# export TELEGRAM_CHAT_ID=your_chat_id

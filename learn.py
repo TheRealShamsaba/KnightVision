@@ -11,6 +11,9 @@ import psutil
 import time
 import gc
 
+from dotenv import load_dotenv
+load_dotenv()
+
 def format_duration(seconds):
     mins, secs = divmod(int(seconds), 60)
     hrs, mins = divmod(mins, 60)
@@ -139,7 +142,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             import random
             import requests
 
-            def send_telegram_message(msg, token="7763609017:AAHy0XmTNvRbHRhbDu3Btxixttdj6wRnV9I", chat_id="5249977605"):
+            def send_telegram_message(msg, token=os.getenv("TELEGRAM_BOT_TOKEN"), chat_id=os.getenv("TELEGRAM_CHAT_ID")):
                 url = f"https://api.telegram.org/bot{token}/sendMessage"
                 data = {
                     "chat_id": chat_id,
