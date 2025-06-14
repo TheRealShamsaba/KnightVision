@@ -156,7 +156,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 epochs=epochs,
                 batch_size=2048,
                 device='cuda' if torch.cuda.is_available() else 'cpu',
-                pin_memory=(device == 'cuda')
+                pin_memory=False
             )
             avg_loss = sum(result['losses']) / len(result['losses'])
 

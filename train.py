@@ -108,7 +108,7 @@ def custom_collate(batch):
 
 model = ChessNet()
 dataset = ChessPGNDataset(os.path.join(BASE_DIR, "data", "games.jsonl"), max_samples=1000000)
-dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=(device.type == "cuda"), num_workers=0)
+dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=False, num_workers=0)
                 
 
 def train_model(model, dataloader, epochs=10000, lr=1e-3):
@@ -133,6 +133,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         total_loss = 0
         total_reward = 0
         for i, (boards_np, moves, outcomes) in enumerate(dataloader):
+            if i % 10 == 0: send_telegram_message(f"📦 Batch {i+1} — Epoch {epoch+1}")
             boards = boards_np.float()
             moves = moves.long()
             outcomes = outcomes.float()
@@ -144,7 +145,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             total_reward += rewards.sum().item()
             writer.add_scalar("Metrics/Reward", rewards.sum().item(), epoch * len(dataloader) + i)
 
-            with torch.amp.autocast(device_type=device.type, dtype=torch.float16):
+            with torch.cuda.amp.autocast(dtype=torch.float16):
                 preds_policy, preds_value = model(boards)
             loss_policy = F.cross_entropy(preds_policy.float(), moves)
             loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
