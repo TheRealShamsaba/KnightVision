@@ -21,12 +21,7 @@ physical_devices = tf.config.list_physical_devices('GPU')
 if physical_devices:
     try:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
-        tf.config.set_visible_devices(physical_devices[0], 'GPU')
-        tf.config.experimental.set_virtual_device_configuration(
-            physical_devices[0],
-            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=8192)]
-        )
-        print("✅ TensorFlow GPU configured with memory growth and 8GB limit.")
+        print("✅ TensorFlow GPU memory growth enabled.")
     except Exception as e:
         print(f"⚠️ GPU config failed: {e}")
 else:
