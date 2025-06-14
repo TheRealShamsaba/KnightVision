@@ -152,11 +152,11 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
                 batch_accuracy = (predicted_moves == moves).float().mean().item()
             else:
                 batch_accuracy = 0.0
-            send_telegram_message(f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}")
 
             loss_policy = F.cross_entropy(preds_policy.float(), moves)
             loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
             loss = loss_policy + loss_value
+            send_telegram_message(f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}")
 
             optimizer.zero_grad()
             loss.backward()
