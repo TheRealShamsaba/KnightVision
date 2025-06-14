@@ -27,6 +27,10 @@ if physical_devices:
 else:
     print("⚠️ No GPU found for TensorFlow.")
 
+# Set PyTorch default device and tensor type
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+torch.set_default_tensor_type(torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor)
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -62,7 +66,6 @@ logger.addHandler(logging.StreamHandler())
 sys.excepthook = lambda exc_type, exc_value, exc_traceback: \
     print("Uncaught exception:", ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback)), flush=True)
 
-torch.set_default_tensor_type(torch.FloatTensor)
 
 def load_or_initialize_model(model_path):
     model = ChessNet()
@@ -137,7 +140,13 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
             start_time = time.time()
             combined_data = selfplay_data + human_data
-            result = train_model(model, combined_data, epochs=epochs)
+            result = train_model(
+                model,
+                combined_data,
+                epochs=epochs,
+                batch_size=512,
+                device='cuda' if torch.cuda.is_available() else 'cpu'
+            )
             avg_loss = sum(result['losses']) / len(result['losses'])
 
             # --- Training score calculation and logging ---
