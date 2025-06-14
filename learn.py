@@ -10,6 +10,7 @@ import zipfile
 import psutil
 import time
 import gc
+import tensorflow as tf
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -168,12 +169,20 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 "👶 KnightVision IQ: now higher than a pigeon’s. Progress!"
             ]
 
+            import tensorflow as tf
+            tf_logs = tf.summary.create_file_writer(log_dir)
+            total_scalars = 0
+            for e in tf.compat.v1.train.summary_iterator(os.path.join(log_dir, "events.out.tfevents." + run_id)):
+                for v in e.summary.value:
+                    total_scalars += 1
+
             telegram_msg = (
                 f"♟️ *KnightVision Training Report — Step {global_step}*\n"
                 f"🏋️‍♂️ *Games Played:* {len(selfplay_data)} self-play | {len(human_data)} human\n"
                 f"🧠 *Avg Loss:* `{avg_loss:.5f}` | 📉 Getting sharper!\n"
                 f"🚀 *Step Time:* {format_duration(batch_time)}\n"
                 f"💾 *RAM Used:* {mem_used:.2f} MB\n"
+                f"📈 *TF Scalars Logged:* {total_scalars}\n"
                 f"📦 *Model Saved:* Step_{global_step}.pth ✅\n\n"
                 f"🧪 *Experiment:* Iteration {i+1}/{iterations}\n"
                 f"🔥 Training with love, neurons, and caffeinated weights.\n"
