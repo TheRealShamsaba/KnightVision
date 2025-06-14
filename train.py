@@ -1,11 +1,6 @@
 print("Training script loaded...")
 import os
-try:
-    from google.colab import drive
-    drive.mount('/content/drive')
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 run_name = "chess_rl_v2"
 checkpoint_dir = os.path.join(BASE_DIR, "runs", run_name, "checkpoints")
 os.makedirs(checkpoint_dir, exist_ok=True)
