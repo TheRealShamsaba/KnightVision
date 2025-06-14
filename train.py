@@ -133,12 +133,6 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         total_loss = 0
         total_reward = 0
         for i, (boards_np, moves, outcomes) in enumerate(dataloader):
-            if preds_policy.size(0) == moves.size(0):
-                _, predicted_moves = torch.max(preds_policy, 1)
-                batch_accuracy = (predicted_moves == moves).float().mean().item()
-            else:
-                batch_accuracy = 0.0
-            send_telegram_message(f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}")
             boards = boards_np.float()
             moves = moves.long()
             outcomes = outcomes.float()
@@ -152,6 +146,14 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
 
             with torch.cuda.amp.autocast(dtype=torch.float16):
                 preds_policy, preds_value = model(boards)
+
+            if preds_policy.size(0) == moves.size(0):
+                _, predicted_moves = torch.max(preds_policy, 1)
+                batch_accuracy = (predicted_moves == moves).float().mean().item()
+            else:
+                batch_accuracy = 0.0
+            send_telegram_message(f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}")
+
             loss_policy = F.cross_entropy(preds_policy.float(), moves)
             loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
             loss = loss_policy + loss_value
