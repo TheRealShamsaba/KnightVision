@@ -141,7 +141,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             total_reward += rewards.sum().item()
             writer.add_scalar("Metrics/Reward", rewards.sum().item(), epoch * len(dataloader) + i)
 
-            with torch.autocast(device_type=device.type, dtype=torch.float16):
+            with torch.amp.autocast(device_type=device.type, dtype=torch.float16):
                 preds_policy, preds_value = model(boards)
             loss_policy = F.cross_entropy(preds_policy.float(), moves)
             loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
