@@ -6,12 +6,9 @@ import os
 try:
     import google.colab
     from google.colab import drive
-    if hasattr(__import__('IPython').get_ipython(), 'kernel'):
-        drive.mount("/content/drive")
-        BASE_DIR = "/content/drive/MyDrive/KnightVision"
-    else:
-        raise ImportError
-except (ImportError, AttributeError):
+    drive.mount("/content/drive")
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+except (ImportError, ModuleNotFoundError):
     print("📦 Not running in Colab — skipping drive.mount")
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
