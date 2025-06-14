@@ -15,13 +15,7 @@ def send_telegram_message(message):
         requests.post(url, json=payload)
     except Exception as e:
         print(f"❌ Failed to send Telegram message: {e}")
-try:
-    import google.colab
-    from google.colab import drive
-    drive.mount('/content/drive')
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except (ImportError, AttributeError, ModuleNotFoundError):
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = "/content/drive/MyDrive/KnightVision/data"
 
 import chess.pgn
 import chess
@@ -107,8 +101,8 @@ def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=o
 
 if __name__ == "__main__":
     parse_all_games(
-        pgn_dir=os.path.join(BASE_DIR, "data", "pgn"),
-        output_path=os.path.join(BASE_DIR, "data", "games.jsonl")
+        pgn_dir=os.path.join(BASE_DIR, "pgn"),
+        output_path=os.path.join(BASE_DIR, "games.jsonl")
     )
 
 # Reminder: Set the required environment variables before running this script,
