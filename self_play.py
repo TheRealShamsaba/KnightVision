@@ -9,9 +9,13 @@ except ImportError:
     IN_COLAB = False
 
 if IN_COLAB:
-    from google.colab import drive
-    drive.mount("/content/drive", force_remount=True)
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+    try:
+        from google.colab import drive
+        drive.mount("/content/drive", force_remount=True)
+    except Exception as e:
+        print(f"⚠️ Colab drive mount failed: {e}")
+        IN_COLAB = False
+    BASE_DIR = "/content/drive/MyDrive/KnightVision" if IN_COLAB else os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 else:
     print("📦 Not running in Colab — skipping drive.mount")
     from dotenv import load_dotenv
