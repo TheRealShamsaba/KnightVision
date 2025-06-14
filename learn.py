@@ -32,6 +32,29 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 from dotenv import load_dotenv
 load_dotenv()
 
+import random
+import requests
+
+def send_telegram_message(msg):
+    telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not telegram_token or not telegram_chat_id:
+        logger = logging.getLogger(__name__)
+        logger.warning("⚠️ Telegram token or chat ID not set.")
+        return
+    url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
+    data = {
+        "chat_id": telegram_chat_id,
+        "text": msg,
+        "parse_mode": "Markdown"
+    }
+    try:
+        requests.post(url, data=data)
+        print(f"📤 Sent Telegram message: {msg}")
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"⚠️ Telegram send failed: {e}")
+
 def format_duration(seconds):
     mins, secs = divmod(int(seconds), 60)
     hrs, mins = divmod(mins, 60)
@@ -118,9 +141,12 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     checkpoints_meta = []
 
     model = load_or_initialize_model(model_path)
+    send_telegram_message("📦 Model loaded and ready. Beginning reinforcement loop...")
+
     for i in range(iterations):
         logger.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
         selfplay_data = self_play(model, num_games=games_per_iter)
+        send_telegram_message(f"♟️ Self-play complete — {len(selfplay_data)} games generated.")
         logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
 
         human_batches_path = os.path.join(DATA_DIR, "human_batches")
@@ -186,27 +212,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             global_step += 1
 
             # --- Telegram notification block ---
-            import random
-            import requests
-
-            telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
-            telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-            def send_telegram_message(msg):
-                if not telegram_token or not telegram_chat_id:
-                    logger.warning("⚠️ Telegram token or chat ID not set.")
-                    return
-                url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
-                data = {
-                    "chat_id": telegram_chat_id,
-                    "text": msg,
-                    "parse_mode": "Markdown"
-                }
-                try:
-                    requests.post(url, data=data)
-                    print(f"📤 Sent Telegram message: {msg}")
-                except Exception as e:
-                    logger.warning(f"⚠️ Telegram send failed: {e}")
 
             fun_endings = [
                 "💡 Fact: Magnus Carlsen once played 10 games at once — blindfolded.",
