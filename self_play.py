@@ -2,15 +2,12 @@
 import os
 print("Self-play script loaded...")
 
-if "COLAB_GPU" in os.environ:
-    try:
-        from google.colab import drive
-        drive.mount("/content/drive", force_remount=True)
-        BASE_DIR = "/content/drive/MyDrive/KnightVision"
-    except Exception as e:
-        print("⚠️ Colab drive mount failed:", e)
-        BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-else:
+try:
+    import google.colab
+    from google.colab import drive
+    drive.mount("/content/drive", force_remount=True)
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
+except ImportError:
     print("📦 Not running in Colab — skipping drive.mount")
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
