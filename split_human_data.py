@@ -9,7 +9,7 @@ if "google.colab" in sys.modules:
     BASE_DIR = "/content/drive/MyDrive/KnightVision/basicChess"
 else:
     BASE_DIR = str(Path(__file__).resolve().parent)
-input_path = os.path.join(BASE_DIR, "data/games.jsonl")
+input_path = "/content/drive/MyDrive/KnightVision/data/games.jsonl"
 output_dir = os.path.join(BASE_DIR, "data/human_batches")
 lines_per_file = 100000  # 100,000 lines per file
 
