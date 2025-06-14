@@ -101,11 +101,14 @@ def custom_collate(batch):
     boards = torch.from_numpy(np.stack(boards)).float().contiguous()
     moves = torch.tensor(moves).long()
     outcomes = torch.tensor(outcomes).float()
-    return boards.to(device), moves.to(device), outcomes.to(device)
+    if device.type == "cuda":
+        return boards.to(device, non_blocking=True), moves.to(device, non_blocking=True), outcomes.to(device, non_blocking=True)
+    else:
+        return boards, moves, outcomes
 
 model = ChessNet()
 dataset = ChessPGNDataset(os.path.join(BASE_DIR, "data", "games.jsonl"), max_samples=1000000)
-dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=False, num_workers=0)
+dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=(device.type == "cuda"), num_workers=0)
                 
 
 def train_model(model, dataloader, epochs=10000, lr=1e-3):

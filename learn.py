@@ -20,7 +20,7 @@ import tensorflow as tf
 physical_devices = tf.config.list_physical_devices('GPU')
 for gpu in physical_devices:
     try:
-        tf.config.experimental.set_memory_growth(gpu, True)
+        tf.config.set_memory_growth(gpu, True)
         print(f"✅ Enabled memory growth for GPU: {gpu}")
     except Exception as e:
         print(f"⚠️ Could not enable memory growth for {gpu}: {e}")
@@ -117,9 +117,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     drive_checkpoint_path = os.path.join(CHECKPOINT_DIR, "model_latest.pth")
     checkpoints_meta = []
 
+    model = load_or_initialize_model(model_path)
     for i in range(iterations):
         logger.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
-        model = load_or_initialize_model(model_path)
         selfplay_data = self_play(model, num_games=games_per_iter)
         logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
 
@@ -141,15 +141,22 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
             start_time = time.time()
             combined_data = selfplay_data + human_data
-            import multiprocessing as mp
-            mp.set_start_method("spawn", force=True)
+            try:
+                import pynvml
+                pynvml.nvmlInit()
+                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                logger.info(f"🧠 GPU Mem before training: {info.used / 1e6:.2f} MB used")
+            except Exception as e:
+                logger.warning(f"⚠️ GPU monitoring failed: {e}")
+
             result = train_model(
                 model,
                 combined_data,
                 epochs=epochs,
                 batch_size=2048,
                 device='cuda' if torch.cuda.is_available() else 'cpu',
-                pin_memory=True
+                pin_memory=(device == 'cuda')
             )
             avg_loss = sum(result['losses']) / len(result['losses'])
 
@@ -234,7 +241,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             send_telegram_message(telegram_msg)
             send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")
             # --- Progress alert every step ---
-            if global_step % 1 == 0:
+            notify_every = 5
+            if global_step % notify_every == 0:
                 send_telegram_message(f"📶 Progress ping: completed step {global_step}.")
             # --- End Telegram notification block ---
 
@@ -266,6 +274,12 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     total_duration = time.time() - total_start
     logger.info(f"🕒 Total training time: {format_duration(total_duration)}")
     logger.info("✅ Reinforcement learning complete.")
+
+try:
+    import torch.multiprocessing as mp
+    mp.set_start_method("spawn", force=True)
+except RuntimeError:
+    pass
 
 if __name__ == "__main__":
     logger.info("🎯 Starting full reinforcement training loop")
