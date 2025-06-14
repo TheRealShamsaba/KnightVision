@@ -23,6 +23,7 @@ def mark_file_parsed(filename):
         f.write(filename + "\n")
 
 def extract_data_from_pgn(pgn_path):
+    count = 0
     try:
         with open(pgn_path, 'r', encoding='utf-8', errors='ignore') as pgn_file:
             while True:
@@ -46,6 +47,10 @@ def extract_data_from_pgn(pgn_path):
                     san = board.san(move)
                     board.push(move)
                     yield {"fen": fen, "move": san, "outcome": outcome}
+                    count += 1
+                    if count % 100000 == 0:
+                        print(f"🕹️ Parsed {count:,} moves so far...")
+
     except Exception as e:
         print(f"Failed to parse {pgn_path}: {e}")
 
@@ -57,9 +62,12 @@ def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=o
             if filename.endswith(".pgn") and filename not in parsed_files:
                 print(f"Parsing {filename}...")
                 pgn_path = os.path.join(pgn_dir, filename)
+                count = 0
                 for record in extract_data_from_pgn(pgn_path):
                     out_file.write(json.dumps(record) + "\n")
+                    count += 1
                 mark_file_parsed(filename)
+                print(f"✅ Finished parsing {filename}")
 
 if __name__ == "__main__":
     parse_all_games()

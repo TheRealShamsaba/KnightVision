@@ -8,20 +8,25 @@ else:
 import os
 input_path = os.path.join(BASE_DIR, "data/games.jsonl")
 output_dir = os.path.join(BASE_DIR, "data/human_batches")
-lines_per_file = 100000  # 1 million per file
+lines_per_file = 100000  # 100,000 lines per file
 
 os.makedirs(output_dir, exist_ok=True)
 
 def split_file(input_file, output_directory, chunk_size):
     with open(input_file, "r") as infile:
         file_count = 0
+        line_count = 0
         outfile = open(os.path.join(output_directory, f"games_part_{file_count}.jsonl"), "w")
         for i, line in enumerate(infile):
             if i > 0 and i % chunk_size == 0:
                 outfile.close()
+                print(f"✅ Saved games_part_{file_count}.jsonl with {chunk_size} lines")
                 file_count += 1
                 outfile = open(os.path.join(output_directory, f"games_part_{file_count}.jsonl"), "w")
             outfile.write(line)
+            line_count += 1
         outfile.close()
+        print(f"✅ Saved games_part_{file_count}.jsonl with remaining lines")
+        print(f"🎉 Split complete. Total lines: {line_count}, Total files: {file_count + 1}")
 
 split_file(input_path, output_dir, lines_per_file)

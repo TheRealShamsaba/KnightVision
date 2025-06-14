@@ -8,6 +8,13 @@ import logging
 import traceback
 import zipfile
 import psutil
+import time
+import gc
+
+def format_duration(seconds):
+    mins, secs = divmod(int(seconds), 60)
+    hrs, mins = divmod(mins, 60)
+    return f"{hrs:02}:{mins:02}:{secs:02}"
 
 from model import ChessNet
 from self_play import self_play
@@ -16,11 +23,15 @@ from train import train_model
 print("✅ Script loaded.", flush=True)
 
 # === SETUP ===
-try:
-    from google.colab import drive
-    drive.mount('/content/drive')
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
+if "google.colab" in sys.modules:
+    try:
+        from google.colab import drive
+        drive.mount('/content/drive')
+        BASE_DIR = "/content/drive/MyDrive/KnightVision"
+    except Exception as e:
+        print("⚠️ Skipping drive mount:", e)
+        BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+else:
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
@@ -62,6 +73,7 @@ def stream_human_data(file_path=os.path.join(DATA_DIR, "games.jsonl"), chunk_siz
 def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     import time
     run_id = str(int(time.time()))
+    total_start = time.time()
     log_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", run_id)
     checkpoint_dir = os.path.join(log_dir, "checkpoints")
     os.makedirs(log_dir, exist_ok=True)
@@ -100,11 +112,14 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             if f.startswith("games_part_") and f.endswith(".jsonl")
         ])
 
+        logger.info(f"🧩 Total human batches: {len(batch_files)}")
+
         for batch_path in batch_files:
             logger.info(f"📥 Loading human data from {batch_path}")
             with open(batch_path, "r") as f:
                 human_data = [json.loads(line) for line in f]
 
+            start_time = time.time()
             combined_data = selfplay_data + human_data
             result = train_model(model, combined_data, epochs=epochs)
             avg_loss = sum(result['losses']) / len(result['losses'])
@@ -119,6 +134,51 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             torch.save(model.state_dict(), drive_checkpoint_path)
             checkpoints_meta.append((global_step, avg_loss))
             global_step += 1
+
+            # --- Telegram notification block ---
+            import random
+            import requests
+
+            def send_telegram_message(msg, token="7763609017:AAHy0XmTNvRbHRhbDu3Btxixttdj6wRnV9I", chat_id="5249977605"):
+                url = f"https://api.telegram.org/bot{token}/sendMessage"
+                data = {
+                    "chat_id": chat_id,
+                    "text": msg,
+                    "parse_mode": "Markdown"
+                }
+                try:
+                    requests.post(url, data=data)
+                except Exception as e:
+                    logger.warning(f"⚠️ Telegram send failed: {e}")
+
+            fun_endings = [
+                "💡 Fact: Magnus Carlsen once played 10 games at once — blindfolded.",
+                "🕵️‍♂️ Tip: The engine is learning your favorite blunders.",
+                "🎯 Goal: Defeat humanity by iteration 42.",
+                "🧩 Every move counts. So does every update.",
+                "👶 KnightVision IQ: now higher than a pigeon’s. Progress!"
+            ]
+
+            telegram_msg = (
+                f"♟️ *KnightVision Training Report — Step {global_step}*\n"
+                f"🏋️‍♂️ *Games Played:* {len(selfplay_data)} self-play | {len(human_data)} human\n"
+                f"🧠 *Avg Loss:* `{avg_loss:.5f}` | 📉 Getting sharper!\n"
+                f"🚀 *Step Time:* {format_duration(batch_time)}\n"
+                f"💾 *RAM Used:* {mem_used:.2f} MB\n"
+                f"📦 *Model Saved:* Step_{global_step}.pth ✅\n\n"
+                f"🧪 *Experiment:* Iteration {i+1}/{iterations}\n"
+                f"🔥 Training with love, neurons, and caffeinated weights.\n"
+                f"🧬 Stay tuned, the brain is evolving... 👾\n\n"
+                + random.choice(fun_endings)
+            )
+
+            send_telegram_message(telegram_msg)
+            # --- End Telegram notification block ---
+
+            batch_time = time.time() - start_time
+            mem_used = psutil.Process(os.getpid()).memory_info().rss / 1e6  # in MB
+            logger.info(f"⏱️ Batch time: {format_duration(batch_time)} | RAM Used: {mem_used:.2f} MB")
+            gc.collect()
 
         torch.save(model.state_dict(), model_path)
         logger.info(f"📦 Model saved after iteration {i+1}")
@@ -142,6 +202,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             os.remove(path)
 
     writer.close()
+    total_duration = time.time() - total_start
+    logger.info(f"🕒 Total training time: {format_duration(total_duration)}")
     logger.info("✅ Reinforcement learning complete.")
 
 if __name__ == "__main__":
