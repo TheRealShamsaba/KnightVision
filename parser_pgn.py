@@ -16,10 +16,11 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"❌ Failed to send Telegram message: {e}")
 try:
+    import google.colab
     from google.colab import drive
     drive.mount('/content/drive')
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
+except (ImportError, AttributeError, ModuleNotFoundError):
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 import chess.pgn
