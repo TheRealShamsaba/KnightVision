@@ -4,10 +4,12 @@ print("Self-play script loaded...")
 
 import os
 try:
+    import google.colab
     from google.colab import drive
-    drive.mount('/content/drive')
+    drive.mount("/content/drive")
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
+except (ImportError, AttributeError):
+    print("📦 Not running in Colab — skipping drive.mount")
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 from chessEngine import GameState
