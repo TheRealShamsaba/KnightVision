@@ -203,6 +203,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 }
                 try:
                     requests.post(url, data=data)
+                    print(f"📤 Sent Telegram message: {msg}")
                 except Exception as e:
                     logger.warning(f"⚠️ Telegram send failed: {e}")
 
@@ -241,7 +242,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             send_telegram_message(telegram_msg)
             send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")
             # --- Progress alert every step ---
-            notify_every = 5
+            notify_every = 1
             if global_step % notify_every == 0:
                 send_telegram_message(f"📶 Progress ping: completed step {global_step}.")
             # --- End Telegram notification block ---
