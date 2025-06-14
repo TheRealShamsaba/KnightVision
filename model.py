@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.cuda.amp import autocast
 
 class ChessNet(nn.Module):
     def __init__(self):
@@ -35,29 +36,29 @@ class ChessNet(nn.Module):
         self.value_fc2 = nn.Linear(256, 1)
 
     def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
+        with autocast():
+            x = F.relu(self.bn1(self.conv1(x)))
+            x = F.relu(self.bn2(self.conv2(x)))
 
-        # Residual Blocks
-        for block in self.res_blocks:
-            residual = x
-            x = block(x)
-            x += residual
-            x = F.relu(x)
+            # Residual Blocks
+            for block in self.res_blocks:
+                residual = x
+                x = block(x)
+                x += residual
+                x = F.relu(x)
 
-        # Policy Head
-        policy = F.relu(self.policy_bn(self.policy_conv(x)))
-        policy = torch.flatten(policy, 1)
-        policy = self.policy_fc(policy)
+            # Policy Head
+            policy = F.relu(self.policy_bn(self.policy_conv(x)))
+            policy = torch.flatten(policy, 1)
+            policy = self.policy_fc(policy)
 
-        # Value Head
-        value = F.relu(self.value_bn(self.value_conv(x)))
-        value = value.view(value.size(0), -1)
-        value = F.relu(self.value_fc1(value))
-        value = torch.tanh(self.value_fc2(value))
+            # Value Head
+            value = F.relu(self.value_bn(self.value_conv(x)))
+            value = value.view(value.size(0), -1)
+            value = F.relu(self.value_fc1(value))
+            value = torch.tanh(self.value_fc2(value))
 
-        print(f"[DEBUG] Input shape: {x.shape}")
-        print(f"[DEBUG] Policy output shape: {policy.shape}")
-        print(f"[DEBUG] Value output shape: {value.shape}")
+            policy = policy.to(x.device)
+            value = value.to(x.device)
 
-        return policy, value
+            return policy, value

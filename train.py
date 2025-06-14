@@ -90,6 +90,9 @@ class ChessPGNDataset(Dataset):
         return from_square * 64 + to_square
 from model import ChessNet
 
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
+torch.backends.cudnn.benchmark = True
 
 # Custom collate function for DataLoader
 def custom_collate(batch):
@@ -101,7 +104,7 @@ def custom_collate(batch):
 
 model = ChessNet()
 dataset = ChessPGNDataset(os.path.join(BASE_DIR, "data", "games.jsonl"), max_samples=1000000)
-dataloader = DataLoader(dataset, batch_size=512, shuffle=True, collate_fn=custom_collate, pin_memory=False)
+dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, collate_fn=custom_collate, pin_memory=True, num_workers=2)
                 
 
 def train_model(model, dataloader, epochs=10000, lr=1e-3):
@@ -137,9 +140,10 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             total_reward += rewards.sum().item()
             writer.add_scalar("Metrics/Reward", rewards.sum().item(), epoch * len(dataloader) + i)
 
-            preds_policy, preds_value = model(boards)
-            loss_policy = F.cross_entropy(preds_policy, moves)
-            loss_value = F.mse_loss(preds_value.squeeze(), outcomes)
+            with torch.autocast(device_type=device.type, dtype=torch.float16):
+                preds_policy, preds_value = model(boards)
+            loss_policy = F.cross_entropy(preds_policy.float(), moves)
+            loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
             loss = loss_policy + loss_value
 
             optimizer.zero_grad()
@@ -154,7 +158,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             total_loss += loss.item()
 
             if i % 5 == 0:
-                print(f"Epoch {epoch+1} | Batch {i+1}/{len(dataloader)} | Loss: {loss.item():.4f}")
+                print(f"Epoch {epoch+1} | Batch {i+1}/{len(dataloader)} | Loss: {loss.item():.4f} | GPU Mem: {torch.cuda.memory_allocated(device) / 1e6:.1f}MB")
 
         # 🔥 Log loss to TensorBoard
         writer.add_scalar("Loss/Total", total_loss, epoch)

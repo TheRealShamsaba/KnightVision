@@ -18,14 +18,12 @@ import time
 import gc
 import tensorflow as tf
 physical_devices = tf.config.list_physical_devices('GPU')
-if physical_devices:
+for gpu in physical_devices:
     try:
-        tf.config.experimental.set_memory_growth(physical_devices[0], True)
-        print("✅ TensorFlow GPU memory growth enabled.")
+        tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"✅ Enabled memory growth for GPU: {gpu}")
     except Exception as e:
-        print(f"⚠️ GPU config failed: {e}")
-else:
-    print("⚠️ No GPU found for TensorFlow.")
+        print(f"⚠️ Could not enable memory growth for {gpu}: {e}")
 
 # Set PyTorch default device and tensor type
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -147,7 +145,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 model,
                 combined_data,
                 epochs=epochs,
-                batch_size=512,
+                batch_size=2048,
                 device='cuda' if torch.cuda.is_available() else 'cpu',
                 pin_memory=False
             )
@@ -233,8 +231,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
             send_telegram_message(telegram_msg)
             send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")
-            # --- Progress alert every 2 steps ---
-            if global_step % 2 == 0:
+            # --- Progress alert every step ---
+            if global_step % 1 == 0:
                 send_telegram_message(f"📶 Progress ping: completed step {global_step}.")
             # --- End Telegram notification block ---
 
