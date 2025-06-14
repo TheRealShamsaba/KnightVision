@@ -94,14 +94,14 @@ from model import ChessNet
 # Custom collate function for DataLoader
 def custom_collate(batch):
     boards, moves, outcomes = zip(*batch)
-    boards = torch.from_numpy(np.stack(boards)).float().to(device)
-    moves = torch.tensor(moves).long().to(device)
-    outcomes = torch.tensor(outcomes).float().to(device)
-    return boards, moves, outcomes
+    boards = torch.from_numpy(np.stack(boards)).float()
+    moves = torch.tensor(moves).long()
+    outcomes = torch.tensor(outcomes).float()
+    return boards.to(device), moves.to(device), outcomes.to(device)
 
 model = ChessNet()
 dataset = ChessPGNDataset(os.path.join(BASE_DIR, "data", "games.jsonl"), max_samples=1000000)
-dataloader = DataLoader(dataset, batch_size=512, shuffle=True, collate_fn=custom_collate, pin_memory=True)
+dataloader = DataLoader(dataset, batch_size=512, shuffle=True, collate_fn=custom_collate, pin_memory=False)
                 
 
 def train_model(model, dataloader, epochs=10000, lr=1e-3):
@@ -110,6 +110,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
     model.to(device)
+    torch.backends.cudnn.benchmark = True
     all_losses = []
     all_rewards = []
     all_accuracies = []
@@ -233,4 +234,4 @@ def send_telegram_message(message):
 # Send notification that training started
 send_telegram_message("🚀 Training started...")
 
-train_model(model, dataloader)
+train_model(model, dataloader, epochs=10000, lr=1e-3)
