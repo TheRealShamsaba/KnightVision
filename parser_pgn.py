@@ -21,7 +21,7 @@ import chess.pgn
 import chess
 import json
 
-PARSED_LOG = os.path.join(BASE_DIR, "data", "parsed_files.log")
+PARSED_LOG = os.path.join(BASE_DIR, "parsed_files.log")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
