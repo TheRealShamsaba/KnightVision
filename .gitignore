@@ -1,38 +1,49 @@
-# Byte-compiled / optimized / DLL files
+# === Python bytecode and cache ===
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
+*.pyd
 
-# Conda and virtual environments
+# === Jupyter Notebook & Colab ===
+.ipynb_checkpoints/
+*.ipynb
+drive/
+
+# === Editor settings ===
+.vscode/
+
+# === Environment folders ===
 .conda/
 env/
 venv/
-.venv/
 
-# PyTorch model checkpoints and training artifacts
-*.pth
-runs/
-
-# Image output or datasets
-images/
-
-# Log files and outputs
-*.log
-
-# VS Code settings
-.vscode/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# OS-generated files
+# === OS metadata ===
 .DS_Store
 Thumbs.db
 
-# Python package files
-*.egg-info/
-dist/
-build/
+# === TensorBoard logs and outputs ===
+runs/
+*.tfevents.*
+images/
 
-# Ignore arc.png if it's just a UI image or diagram
-arc.png
+# === Checkpoints and training artifacts ===
+checkpoints/
+*.pth
+*.pt
+*.zip
+
+# === Datasets (keep out of repo to reduce size) ===
+data/*.jsonl
+data/*.pgn
+data/*.csv
+data/human_batches/
+
+# === Log, output, and temporary files ===
+*.log
+*.out
+*.tmp
+*.bak
+*.pgn
+
+# === Misc ===
+*.db

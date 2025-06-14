@@ -1,4 +1,6 @@
 # self_play.py
+# Self-play script loaded...
+print("Self-play script loaded...")
 
 from chessEngine import GameState
 from ai import encode_board, encode_move
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 def self_play(model, num_games=100):
     data = []
     model.eval()
+    print(f"Starting self-play with {num_games} games...")
     for _ in range(num_games):
         gs = GameState()
         game_data = []
@@ -42,19 +45,33 @@ def self_play(model, num_games=100):
             gs.makeMove(move)
 
         # Assign outcome based on game end state
-        if gs.inCheck():
-            if len(gs.getValidMoves()) == 0:
-                outcome = -1 if gs.whiteToMove else 1  # last player gave checkmate
-            else:
-                outcome = 0  # game not finished
+        if gs.inCheck() and len(gs.getValidMoves()) == 0:
+            # Checkmate
+            outcome = 1 if not gs.whiteToMove else -1
         elif len(gs.getValidMoves()) == 0:
-            outcome = 0  # stalemate
+            # Stalemate
+            outcome = 0.5
+        elif gs.isDraw():
+            # Draw by repetition or insufficient material (you may need to implement this)
+            outcome = 0.5
         else:
-            outcome = 0  # game ended early
+            # Game ended early — reward based on material balance
+            white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
+            black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
+            if white_material == black_material:
+                outcome = 0
+            else:
+                outcome = (white_material - black_material) / max(white_material, black_material)
         for state, move_index in game_data:
             data.append((state, move_index, outcome))
 
     return data
+
+
+# Piece value function for material evaluation
+def piece_value(piece):
+    values = {"P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 0}
+    return values.get(piece.upper(), 0)
 
 
 if __name__ == "__main__":

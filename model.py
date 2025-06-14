@@ -35,5 +35,4 @@ class ChessNet(nn.Module):
         value = F.relu(self.val_fc1(flat))
         value = torch.tanh(self.val_fc2(value))
         
-        
         return policy, value

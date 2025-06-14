@@ -66,10 +66,30 @@ def main():
                     for mv in validMoves:
                         if mv.startRow == playerClicks[0][0] and mv.startCol == playerClicks[0][1] and \
                            mv.endRow == playerClicks[1][0] and mv.endCol == playerClicks[1][1]:
+                            # Check for promotion
+                            mv.isPawnPromotion = (mv.pieceMoved[1] == "p" and (mv.endRow == 0 or mv.endRow == 7))
                             piece = gs.board[mv.startRow][mv.startCol]
                             if (gs.whiteToMove and piece[0] == "w") or (not gs.whiteToMove and piece[0] == 'b'):
                                 logger.debug("Attempting move: %s", mv.getChessNotation())
                                 gs.makeMove(mv)
+                                # Handle promotion
+                                if mv.isPawnPromotion:
+                                    promoting = True
+                                    drawPromotionMenu(screen, piece[0] == "w")
+                                    while promoting:
+                                        for e in p.event.get():
+                                            if e.type == p.QUIT:
+                                                p.quit()
+                                                exit()
+                                            elif e.type == p.MOUSEBUTTONDOWN:
+                                                x, y = p.mouse.get_pos()
+                                                if HEIGHT // 2 - SQ_SIZE // 2 <= y <= HEIGHT // 2 + SQ_SIZE // 2:
+                                                    rel_x = x - (WIDTH // 2 - 2 * SQ_SIZE)
+                                                    if 0 <= rel_x < 4 * SQ_SIZE:
+                                                        index = rel_x // SQ_SIZE
+                                                        promoPiece = ['Q', 'R', 'B', 'N'][index]
+                                                        gs.board[mv.endRow][mv.endCol] = piece[0] + promoPiece
+                                                        promoting = False
                                 if mv.getChessNotation() == "e1c1":  # White queenside castling
                                     gs.board[7][0] = "--"
                                     gs.board[7][3] = "wR"
@@ -121,7 +141,7 @@ def drawPieces(screen , board):
         for c in range(DIMENSION):
             piece = board[r][c]
             if piece != "--" : # not empty square
-                screen.blit(IMAGES[piece], p.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+                screen.blit(IMAGES[piece.lower()], p.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
 
 
 # highlight squares for selected piece and valid moves
@@ -138,6 +158,19 @@ def highlightSquares(screen, gs, validMoves, sqSelected):
                 if move.startRow == r and move.startCol == c:
                     screen.blit(s, (move.endCol * SQ_SIZE, move.endRow * SQ_SIZE))
 
+def drawPromotionMenu(screen, isWhite):
+    menuWidth, menuHeight = 4 * SQ_SIZE, SQ_SIZE
+    menuSurface = p.Surface((menuWidth, menuHeight))
+    menuSurface.fill(p.Color("white") if isWhite else p.Color("darkgray"))
+    pieces = ['Q', 'R', 'B', 'N']
+    color = 'w' if isWhite else 'b'
+    for idx, piece in enumerate(pieces):
+        menuSurface.blit(IMAGES[(color + piece).lower()], p.Rect(idx * SQ_SIZE, 0, SQ_SIZE, SQ_SIZE))
+    # Center the menu horizontally and vertically
+    menu_x = WIDTH // 2 - 2 * SQ_SIZE
+    menu_y = HEIGHT // 2 - SQ_SIZE // 2
+    screen.blit(menuSurface, (menu_x, menu_y))
+    p.display.update()
 
 if __name__ == "__main__":
     main()
