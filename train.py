@@ -203,22 +203,20 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         "scores": all_scores
     }
 
-if IN_COLAB:
-    try:
-        import telegram
-    except ImportError:
-        import subprocess
-        subprocess.run(["pip", "install", "python-telegram-bot==13.15"])
-        import telegram
-else:
-    import telegram
-
 telegram_token = os.getenv("TELEGRAM_TOKEN")
 telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
 def send_telegram_message(message):
+    global telegram
     if telegram_token and telegram_chat_id:
         try:
+            if "telegram" not in globals():
+                try:
+                    import telegram
+                except ImportError:
+                    import subprocess
+                    subprocess.run(["pip", "install", "python-telegram-bot==13.15"])
+                    import telegram
             bot = telegram.Bot(token=telegram_token)
             bot.send_message(chat_id=telegram_chat_id, text=message)
         except Exception as e:

@@ -17,6 +17,20 @@ import psutil
 import time
 import gc
 import tensorflow as tf
+physical_devices = tf.config.list_physical_devices('GPU')
+if physical_devices:
+    try:
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        tf.config.set_visible_devices(physical_devices[0], 'GPU')
+        tf.config.experimental.set_virtual_device_configuration(
+            physical_devices[0],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=8192)]
+        )
+        print("✅ TensorFlow GPU configured with memory growth and 8GB limit.")
+    except Exception as e:
+        print(f"⚠️ GPU config failed: {e}")
+else:
+    print("⚠️ No GPU found for TensorFlow.")
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -64,7 +78,7 @@ def load_or_initialize_model(model_path):
         logger.info("🆕 Initialized new model.")
     return model
 
-def stream_human_data(file_path=os.path.join(DATA_DIR, "games.jsonl"), chunk_size=16, max_lines=1_000_000):
+def stream_human_data(file_path=os.path.join(DATA_DIR, "games.jsonl"), chunk_size=64, max_lines=1_000_000):
     with open(file_path, "r") as f:
         chunk = []
         for i, line in enumerate(f):
