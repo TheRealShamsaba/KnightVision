@@ -15,8 +15,7 @@ if IN_COLAB:
         BASE_DIR = "/content/drive/MyDrive/KnightVision"
     except Exception as e:
         print(f"⚠️ Colab drive mount failed: {e}")
-        IN_COLAB = False
-        BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+        BASE_DIR = os.getenv("BASE_DIR", "/content/drive/MyDrive/KnightVision")
 else:
     print("📦 Not running in Colab — skipping drive.mount")
     from dotenv import load_dotenv
@@ -97,6 +96,8 @@ def piece_value(piece):
 
 if __name__ == "__main__":
     model = ChessNet()
-    model.load_state_dict(torch.load(os.path.join(BASE_DIR, "checkpoints", "model.pth")))  # Replace with your model file
+    model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    print(f"✅ Loaded model from {model_path}")
     data = self_play(model, num_games=50)
     logger.info("Generated %s samples from self-play", len(data))

@@ -103,10 +103,12 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     all_scores = []
 
     print("Starting training...")
+    send_telegram_message("✅ train.py started training...")
 
     for epoch in range(epochs):
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
+            send_telegram_message(f"📦 train.py checkpoint saved — Epoch {epoch+1}")
         total_loss = 0
         total_reward = 0
         for i, (boards_np, moves, outcomes) in enumerate(dataloader):
@@ -163,6 +165,9 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         print(f"🏋️‍♂️ Reward: {avg_reward:.4f}")
         print(f"📈 Score: {score:.2f}/100\n")
 
+        if (epoch + 1) % 5 == 0:
+            send_telegram_message(f"📊 train.py progress — Epoch {epoch+1}: Score {score:.2f}")
+
         all_losses.append(total_loss)
         all_rewards.append(total_reward / len(dataloader.dataset))
         all_accuracies.append(accuracy)
@@ -185,11 +190,28 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
 
     writer.flush()
     writer.close()
+    send_telegram_message("🏁 train.py finished training.")
     return {
         "losses": all_losses,
         "rewards": all_rewards,
         "accuracies": all_accuracies,
         "scores": all_scores
     }
+
+import telegram
+
+telegram_token = os.getenv("TELEGRAM_TOKEN")
+telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+def send_telegram_message(message):
+    if telegram_token and telegram_chat_id:
+        try:
+            bot = telegram.Bot(token=telegram_token)
+            bot.send_message(chat_id=telegram_chat_id, text=message)
+        except Exception as e:
+            print(f"Failed to send Telegram message: {e}")
+
+# Send notification that training started
+send_telegram_message("🚀 Training started...")
 
 train_model(model, dataloader)

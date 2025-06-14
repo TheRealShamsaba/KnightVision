@@ -139,6 +139,12 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             print(f"📈 Score: {score:.2f}/100")
 
             writer.add_scalar("Training/Avg_Loss", avg_loss, global_step)
+            # --- TensorFlow logging (for compatibility with TF tools) ---
+            with tf_logs.as_default():
+                tf.summary.scalar("Avg_Loss", avg_loss, step=global_step)
+                tf.summary.scalar("Score", score, step=global_step)
+                tf.summary.scalar("SelfPlay_Size", len(selfplay_data), step=global_step)
+                tf.summary.scalar("Human_Batch_Size", len(human_data), step=global_step)
             writer.add_scalar("Training/SelfPlay_Size", len(selfplay_data), global_step)
             writer.add_scalar("Training/Human_Batch_Size", len(human_data), global_step)
             writer.flush()
@@ -206,6 +212,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             )
 
             send_telegram_message(telegram_msg)
+            # --- Progress alert every 5 steps ---
+            if global_step % 5 == 0:
+                send_telegram_message(f"📦 Still training... Just completed step {global_step}.")
             # --- End Telegram notification block ---
 
             logger.info(f"⏱️ Batch time: {format_duration(batch_time)} | RAM Used: {mem_used:.2f} MB")
