@@ -29,7 +29,7 @@ else:
 
 # Set PyTorch default device and tensor type
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-torch.set_default_tensor_type(torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor)
+# Avoid global default override, let each tensor use `.to(device)`
 
 from dotenv import load_dotenv
 load_dotenv()
