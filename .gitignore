@@ -33,6 +33,7 @@ checkpoints/
 *.zip
 
 # === Datasets (keep out of repo to reduce size) ===
+data/
 data/*.jsonl
 data/*.pgn
 data/*.csv
