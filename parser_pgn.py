@@ -106,7 +106,10 @@ def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=o
                 notify_bot(f"✅ Done parsing {filename} ({count} moves)")
 
 if __name__ == "__main__":
-    parse_all_games()
+    parse_all_games(
+        pgn_dir=os.path.join(BASE_DIR, "data", "pgn"),
+        output_path=os.path.join(BASE_DIR, "data", "games.jsonl")
+    )
 
 # Reminder: Set the required environment variables before running this script,
 # or create a .env file with the following contents:
