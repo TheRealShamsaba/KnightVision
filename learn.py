@@ -27,14 +27,9 @@ from train import train_model
 print("✅ Script loaded.", flush=True)
 
 # === SETUP ===
-if "google.colab" in sys.modules:
-    try:
-        from google.colab import drive
-        drive.mount('/content/drive')
-        BASE_DIR = "/content/drive/MyDrive/KnightVision"
-    except Exception as e:
-        print("⚠️ Skipping drive mount:", e)
-        BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+base_dir_env = os.getenv("BASE_DIR")
+if base_dir_env:
+    BASE_DIR = base_dir_env
 else:
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -128,6 +123,13 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             result = train_model(model, combined_data, epochs=epochs)
             avg_loss = sum(result['losses']) / len(result['losses'])
 
+            # --- Training score calculation and logging ---
+            accuracy = result.get("accuracy", 0.0)
+            reward = result.get("avg_reward", 0.0)
+            score = (1 - avg_loss) * 50 + accuracy * 30 + reward * 20
+            writer.add_scalar("Training/Score", score, global_step)
+            print(f"📈 Score: {score:.2f}/100")
+
             writer.add_scalar("Training/Avg_Loss", avg_loss, global_step)
             writer.add_scalar("Training/SelfPlay_Size", len(selfplay_data), global_step)
             writer.add_scalar("Training/Human_Batch_Size", len(human_data), global_step)
@@ -172,9 +174,14 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             import tensorflow as tf
             tf_logs = tf.summary.create_file_writer(log_dir)
             total_scalars = 0
-            for e in tf.compat.v1.train.summary_iterator(os.path.join(log_dir, "events.out.tfevents." + run_id)):
-                for v in e.summary.value:
-                    total_scalars += 1
+            tf_event_files = [f for f in os.listdir(log_dir) if f.startswith("events.out.tfevents.")]
+            if tf_event_files:
+                for e in tf.compat.v1.train.summary_iterator(os.path.join(log_dir, tf_event_files[0])):
+                    for v in e.summary.value:
+                        total_scalars += 1
+
+            batch_time = time.time() - start_time
+            mem_used = psutil.Process(os.getpid()).memory_info().rss / 1e6  # in MB
 
             telegram_msg = (
                 f"♟️ *KnightVision Training Report — Step {global_step}*\n"
@@ -193,8 +200,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             send_telegram_message(telegram_msg)
             # --- End Telegram notification block ---
 
-            batch_time = time.time() - start_time
-            mem_used = psutil.Process(os.getpid()).memory_info().rss / 1e6  # in MB
             logger.info(f"⏱️ Batch time: {format_duration(batch_time)} | RAM Used: {mem_used:.2f} MB")
             gc.collect()
 

@@ -105,6 +105,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     all_losses = []
     all_rewards = []
     all_accuracies = []
+    all_scores = []
 
     print("Starting training...")
 
@@ -157,9 +158,20 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         writer.add_scalar("Metrics/Accuracy", accuracy, epoch)
         writer.add_scalar("Metrics/AvgReward", total_reward / len(dataloader.dataset), epoch)
 
+        avg_reward = total_reward / len(dataloader.dataset)
+        score = (accuracy * 100) - (total_loss * 0.5) + (avg_reward * 10)
+        score = max(0, min(score, 100))
+        writer.add_scalar("Metrics/TrainingScore", score, epoch)
+        print(f"\n🧠 Training Report — Epoch {epoch+1}")
+        print(f"🎯 Accuracy: {accuracy * 100:.2f}%")
+        print(f"📉 Loss: {total_loss:.4f}")
+        print(f"🏋️‍♂️ Reward: {avg_reward:.4f}")
+        print(f"📈 Score: {score:.2f}/100\n")
+
         all_losses.append(total_loss)
         all_rewards.append(total_reward / len(dataloader.dataset))
         all_accuracies.append(accuracy)
+        all_scores.append(score)
 
         # Log model predictions and weights as histograms
         writer.add_histogram("Distributions/Policy", preds_policy, epoch)
@@ -181,7 +193,8 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     return {
         "losses": all_losses,
         "rewards": all_rewards,
-        "accuracies": all_accuracies
+        "accuracies": all_accuracies,
+        "scores": all_scores
     }
 
 train_model(model, dataloader)

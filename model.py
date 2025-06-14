@@ -12,10 +12,16 @@ class ChessNet(nn.Module):
         self.conv2 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(256)
 
-        self.res1 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.res_bn1 = nn.BatchNorm2d(256)
-        self.res2 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.res_bn2 = nn.BatchNorm2d(256)
+        self.res_blocks = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(256, 256, kernel_size=3, padding=1),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(256, 256, kernel_size=3, padding=1),
+                nn.BatchNorm2d(256)
+            )
+            for _ in range(3)
+        ])
 
         # Policy Head
         self.policy_conv = nn.Conv2d(256, 2, kernel_size=1)
@@ -32,16 +38,16 @@ class ChessNet(nn.Module):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
 
-        # Residual Block
-        residual = x
-        x = F.relu(self.res_bn1(self.res1(x)))
-        x = self.res_bn2(self.res2(x))
-        x += residual
-        x = F.relu(x)
+        # Residual Blocks
+        for block in self.res_blocks:
+            residual = x
+            x = block(x)
+            x += residual
+            x = F.relu(x)
 
         # Policy Head
         policy = F.relu(self.policy_bn(self.policy_conv(x)))
-        policy = policy.view(policy.size(0), -1)
+        policy = torch.flatten(policy, 1)
         policy = self.policy_fc(policy)
 
         # Value Head
@@ -49,5 +55,9 @@ class ChessNet(nn.Module):
         value = value.view(value.size(0), -1)
         value = F.relu(self.value_fc1(value))
         value = torch.tanh(self.value_fc2(value))
+
+        print(f"[DEBUG] Input shape: {x.shape}")
+        print(f"[DEBUG] Policy output shape: {policy.shape}")
+        print(f"[DEBUG] Value output shape: {value.shape}")
 
         return policy, value

@@ -4,10 +4,11 @@ import pygame as p
 import torch
 import os
 try:
+    import google.colab
     from google.colab import drive
-    drive.mount('/content/drive')
+    drive.mount('/content/drive', force_remount=True)
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
+except (ModuleNotFoundError, AttributeError):
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 from chessEngine import GameState
 import chessMain
@@ -41,6 +42,7 @@ def get_ai_move(gs, model):
     legal_probs = [policy[i] for i in legal_indices]
 
     if sum(legal_probs) == 0:
+        print("[WARNING] Model returned zero probability for all legal moves. Picking the first move.")
         return valid_moves[0]
     else:
         normalized_probs = [w / sum(legal_probs) for w in legal_probs]
@@ -62,9 +64,13 @@ def main():
         return os.path.join(checkpoint_dir, latest_file)
 
     model = ChessNet()
-    model_path = get_latest_checkpoint()
-    model.load_state_dict(torch.load(model_path))
-    print(f"Loaded model from {model_path}")
+    try:
+        model_path = get_latest_checkpoint()
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        print(f"Loaded model from {model_path}")
+    except Exception as e:
+        print(f"[ERROR] Failed to load model checkpoint: {e}")
+        return
     model.eval()
     running = True
     sq_selected = ()

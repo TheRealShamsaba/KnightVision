@@ -6,13 +6,7 @@ try:
 except ImportError:
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-import os
-try:
-    from google.colab import drive
-    drive.mount('/content/drive')
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+print(f"[DATASET] Base directory set to: {BASE_DIR}")
 
 import json
 import torch
@@ -33,21 +27,26 @@ class ChessDataset(Dataset):
         self.move_to_idx = move_to_idx or {}
         self.idx_to_move = {}  # for decoding if needed
         jsonl_path = os.path.join(BASE_DIR, jsonl_path) if not os.path.isabs(jsonl_path) else jsonl_path
-        with open(jsonl_path, 'r') as f:
-            for i, line in enumerate(f):
-                if max_games and i >= max_games:
-                    break
-                game = json.loads(line)
-                fen, move, outcome = game['fen'], game['move'], game.get('outcome')
+        try:
+            with open(jsonl_path, 'r') as f:
+                for i, line in enumerate(f):
+                    if max_games and i >= max_games:
+                        break
+                    game = json.loads(line)
+                    fen, move, outcome = game['fen'], game['move'], game.get('outcome')
 
-                if move not in self.move_to_idx:
-                    idx = len(self.move_to_idx)
-                    self.move_to_idx[move] = idx
-                    self.idx_to_move[idx] = move
+                    if move not in self.move_to_idx:
+                        idx = len(self.move_to_idx)
+                        self.move_to_idx[move] = idx
+                        self.idx_to_move[idx] = move
 
-                board_tensor = self.fen_to_tensor(fen)
-                move_idx = self.move_to_idx[move]
-                self.data.append((board_tensor, move_idx))
+                    board_tensor = self.fen_to_tensor(fen)
+                    move_idx = self.move_to_idx[move]
+                    self.data.append((board_tensor, move_idx))
+            print(f"[DATASET] Loaded {len(self.data)} samples from {jsonl_path}")
+            print(f"[DATASET] Unique moves encoded: {len(self.move_to_idx)}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load dataset from {jsonl_path}: {e}")
 
     def fen_to_tensor(self, fen):
         board = chess.Board(fen)

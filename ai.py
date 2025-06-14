@@ -1,12 +1,5 @@
 import os
-
-try:
-    import google.colab
-    from google.colab import drive
-    drive.mount('/content/drive', force_remount=True)
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.environ.get("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import numpy as np
 
