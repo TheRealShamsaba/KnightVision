@@ -1,10 +1,3 @@
-import os
-try:
-    from google.colab import drive
-    drive.mount('/content/drive')
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-except ImportError:
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
