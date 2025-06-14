@@ -1,5 +1,7 @@
 print("Training script loaded...")
 import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 try:
     import google.colab
     IN_COLAB = True
@@ -124,12 +126,16 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     all_scores = []
 
     print("Starting training...")
-    send_telegram_message("✅ train.py started training...")
+    message = "✅ train.py started training..."
+    print("⚠️ Attempting to send message:", message)
+    send_telegram_message(message)
 
     for epoch in range(epochs):
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
-            send_telegram_message(f"📦 train.py checkpoint saved — Epoch {epoch+1}")
+            message = f"📦 train.py checkpoint saved — Epoch {epoch+1}"
+            print("⚠️ Attempting to send message:", message)
+            send_telegram_message(message)
         total_loss = 0
         total_reward = 0
         for i, (boards_np, moves, outcomes) in enumerate(dataloader):
@@ -156,7 +162,9 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             loss_policy = F.cross_entropy(preds_policy.float(), moves)
             loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
             loss = loss_policy + loss_value
-            send_telegram_message(f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}")
+            message = f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}"
+            print("⚠️ Attempting to send message:", message)
+            send_telegram_message(message)
 
             optimizer.zero_grad()
             loss.backward()
@@ -196,7 +204,9 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         print(f"📈 Score: {score:.2f}/100\n")
 
         if (epoch + 1) % 5 == 0:
-            send_telegram_message(f"📊 train.py progress — Epoch {epoch+1}: Score {score:.2f}")
+            message = f"📊 train.py progress — Epoch {epoch+1}: Score {score:.2f}"
+            print("⚠️ Attempting to send message:", message)
+            send_telegram_message(message)
 
         all_losses.append(total_loss)
         all_rewards.append(total_reward / len(dataloader.dataset))
@@ -220,7 +230,9 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
 
     writer.flush()
     writer.close()
-    send_telegram_message("🏁 train.py finished training.")
+    message = "🏁 train.py finished training."
+    print("⚠️ Attempting to send message:", message)
+    send_telegram_message(message)
     return {
         "losses": all_losses,
         "rewards": all_rewards,
@@ -249,5 +261,6 @@ def send_telegram_message(message):
 
 # Send notification that training started
 send_telegram_message("🚀 Training started...")
+print(f"✅ Telegram message function test: {telegram_token=}, {telegram_chat_id=}")
 
 train_model(model, dataloader, epochs=10000, lr=1e-3)
