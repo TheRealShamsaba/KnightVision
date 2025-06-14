@@ -1,6 +1,7 @@
 import os
 import requests
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+from dotenv import load_dotenv
+load_dotenv()
 
 def send_telegram_message(message):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -28,8 +29,8 @@ import requests
 
 PARSED_LOG = os.path.join(BASE_DIR, "data", "parsed_files.log")
 
-TELEGRAM_BOT_TOKEN = "7763609017:AAHy0XmTNvRbHRhbDu3Btxixttdj6wRnV9I"
-TELEGRAM_CHAT_ID = "5249977605"
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def notify_bot(message):
     try:
@@ -103,6 +104,7 @@ def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=o
 if __name__ == "__main__":
     parse_all_games()
 
-# Reminder: Set the required environment variables before running this script:
-# export TELEGRAM_BOT_TOKEN=your_bot_token
-# export TELEGRAM_CHAT_ID=your_chat_id
+# Reminder: Set the required environment variables before running this script,
+# or create a .env file with the following contents:
+# TELEGRAM_BOT_TOKEN=your_bot_token
+# TELEGRAM_CHAT_ID=your_chat_id

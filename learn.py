@@ -142,10 +142,16 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             import random
             import requests
 
-            def send_telegram_message(msg, token=os.getenv("TELEGRAM_BOT_TOKEN"), chat_id=os.getenv("TELEGRAM_CHAT_ID")):
-                url = f"https://api.telegram.org/bot{token}/sendMessage"
+            telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+            telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+            def send_telegram_message(msg):
+                if not telegram_token or not telegram_chat_id:
+                    logger.warning("⚠️ Telegram token or chat ID not set.")
+                    return
+                url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
                 data = {
-                    "chat_id": chat_id,
+                    "chat_id": telegram_chat_id,
                     "text": msg,
                     "parse_mode": "Markdown"
                 }
