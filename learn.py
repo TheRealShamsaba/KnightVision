@@ -12,6 +12,7 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 import logging
 import traceback
+import sys
 import zipfile
 import psutil
 import time
@@ -22,12 +23,18 @@ for gpu in physical_devices:
     try:
         tf.config.set_memory_growth(gpu, True)
         print(f"✅ Enabled memory growth for GPU: {gpu}")
+        sys.stdout.flush()
+        sys.stderr.flush()
     except Exception as e:
         print(f"⚠️ Could not enable memory growth for {gpu}: {e}")
+        sys.stdout.flush()
+        sys.stderr.flush()
 
 # Set PyTorch default device and tensor type
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"🖥️ Running on device: {device}")
+sys.stdout.flush()
+sys.stderr.flush()
 # Avoid global default override, let each tensor use `.to(device)`
 
 from dotenv import load_dotenv
@@ -49,6 +56,8 @@ from self_play import self_play
 from train import train_model
 
 print("✅ Script loaded.", flush=True)
+sys.stdout.flush()
+sys.stderr.flush()
 
 # === SETUP ===
 from google.colab import drive
@@ -73,8 +82,12 @@ def load_or_initialize_model(model_path):
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))
         logger.info("✅ Loaded existing model.")
+        sys.stdout.flush()
+        sys.stderr.flush()
     else:
         logger.info("🆕 Initialized new model.")
+        sys.stdout.flush()
+        sys.stderr.flush()
     return model
 
 def stream_human_data(file_path=os.path.join(DATA_DIR, "games.jsonl"), chunk_size=64, max_lines=1_000_000):
@@ -101,7 +114,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
     model_path = os.path.join(checkpoint_dir, "model.pth")
     model = load_or_initialize_model(model_path)
-    send_telegram_message("📦 Model loaded and ready. Beginning reinforcement loop...")
 
     # Save initial model backup
     initial_model_path = os.path.join(CHECKPOINT_DIR, "initial_model.pth")
@@ -120,6 +132,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         for dir_to_remove in subdirs[keep_last:]:
             import shutil
             logger.info(f"🧹 Cleaning up old session: {dir_to_remove}")
+            sys.stdout.flush()
+            sys.stderr.flush()
             shutil.rmtree(dir_to_remove)
 
     cleanup_old_sessions()
@@ -133,32 +147,54 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     print(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
-    send_telegram_message("📦 Model loaded and ready. Beginning reinforcement loop...")
+    sys.stdout.flush()
+    sys.stderr.flush()
+    send_telegram_message(f"🤖 Starting KnightVision RL — Token: {os.getenv('TELEGRAM_BOT_TOKEN')[:10]}... | Chat ID: {os.getenv('TELEGRAM_CHAT_ID')}")
 
     for i in range(iterations):
+        send_telegram_message(f"🌀 Iteration {i+1}/{iterations} started...")
+        print(f"🌀 Iteration {i+1}/{iterations} started...", flush=True)
         logger.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
+        sys.stdout.flush()
+        sys.stderr.flush()
         try:
             send_telegram_message("📣 Entering self_play()...")
             selfplay_data = self_play(model, num_games=games_per_iter)
             # === DEBUG BLOCK: print number of samples ===
             print(f"✅ Self-play returned {len(selfplay_data)} samples")
+            sys.stdout.flush()
+            sys.stderr.flush()
             if len(selfplay_data) == 0:
                 send_telegram_message("⚠️ Self-play returned 0 samples — training skipped.")
             print(f"🧪 Generated {len(selfplay_data)} self-play games")
+            sys.stdout.flush()
+            sys.stderr.flush()
             if selfplay_data:
                 print("🔍 First self-play sample:", selfplay_data[0])
+                sys.stdout.flush()
+                sys.stderr.flush()
             logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
+            sys.stdout.flush()
+            sys.stderr.flush()
             if len(selfplay_data) == 0:
                 logger.warning("⚠️ Self-play returned 0 games. This may indicate a bug.")
+                sys.stdout.flush()
+                sys.stderr.flush()
                 send_telegram_message("⚠️ Self-play returned 0 games. Please inspect the logic.")
             else:
                 logger.info("✅ Self-play completed successfully.")
+                sys.stdout.flush()
+                sys.stderr.flush()
                 send_telegram_message(f"♟️ Self-play complete — {len(selfplay_data)} games generated.")
                 # Optionally print first game
                 logger.debug(f"🔍 Sample self-play game: {selfplay_data[0]}")
+                sys.stdout.flush()
+                sys.stderr.flush()
         except Exception as e:
             error_details = traceback.format_exc()
             logger.error(f"🔥 Self-play crashed: {e}\n{error_details}")
+            sys.stdout.flush()
+            sys.stderr.flush()
             send_telegram_message(f"🔥 Self-play crashed with error:\n{e}")
             raise e
 
@@ -169,6 +205,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         ])
 
         logger.info(f"🧩 Total human batches: {len(batch_files)}")
+        sys.stdout.flush()
+        sys.stderr.flush()
 
         for batch_path in batch_files:
             import tensorflow as tf
@@ -176,6 +214,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             send_telegram_message(f"🧠 Starting training on batch file: {os.path.basename(batch_path)} (Step {global_step})")
             send_telegram_message("🚀 Beginning data loading and collation...")
             logger.info(f"📥 Loading human data from {batch_path}")
+            sys.stdout.flush()
+            sys.stderr.flush()
             with open(batch_path, "r") as f:
                 human_data = [json.loads(line) for line in f]
 
@@ -187,8 +227,12 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 handle = pynvml.nvmlDeviceGetHandleByIndex(0)
                 info = pynvml.nvmlDeviceGetMemoryInfo(handle)
                 logger.info(f"🧠 GPU Mem before training: {info.used / 1e6:.2f} MB used")
+                sys.stdout.flush()
+                sys.stderr.flush()
             except Exception as e:
                 logger.warning(f"⚠️ GPU monitoring failed: {e}")
+                sys.stdout.flush()
+                sys.stderr.flush()
 
             result = train_model(
                 model,
@@ -207,6 +251,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             score = (1 - avg_loss) * 50 + accuracy * 30 + reward * 20
             writer.add_scalar("Training/Score", score, global_step)
             print(f"📈 Score: {score:.2f}/100")
+            sys.stdout.flush()
+            sys.stderr.flush()
 
             writer.add_scalar("Training/Avg_Loss", avg_loss, global_step)
             # --- TensorFlow logging (for compatibility with TF tools) ---
@@ -260,6 +306,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 f"💾 *RAM Used:* {mem_used:.2f} MB\n"
             )
             print("📨 Telegram message preview:\n", telegram_msg)
+            sys.stdout.flush()
+            sys.stderr.flush()
 
             send_telegram_message(telegram_msg)
             send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")
@@ -271,12 +319,16 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             # --- End Telegram notification block ---
 
             logger.info(f"⏱️ Batch time: {format_duration(batch_time)} | RAM Used: {mem_used:.2f} MB")
+            sys.stdout.flush()
+            sys.stderr.flush()
             gc.collect()
 
         torch.save(model.state_dict(), model_path)
         with open(os.path.join(checkpoint_dir, f"model_step_{global_step}.txt"), 'w') as ts_file:
             ts_file.write(f"Checkpoint saved at step {global_step}")
         logger.info(f"📦 Model saved after iteration {i+1}")
+        sys.stdout.flush()
+        sys.stderr.flush()
 
     # Save top checkpoints
     checkpoints_meta.sort(key=lambda x: x[1])  # sort by lowest loss
@@ -302,10 +354,13 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     total_duration = time.time() - total_start
     with open(os.path.join(BASE_DIR, "last_training_summary.txt"), 'w') as f:
         f.write(f"Training completed in {format_duration(total_duration)}\nBest steps: {best_steps}")
+        send_telegram_message(f"📊 Training complete. Total time: {format_duration(total_duration)}. Best checkpoint: step {best_steps[0][0]}")
     # Backup final model
     torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "final_model.pth"))
     logger.info(f"🕒 Total training time: {format_duration(total_duration)}")
     logger.info("✅ Reinforcement learning complete.")
+    sys.stdout.flush()
+    sys.stderr.flush()
 
 try:
     import torch.multiprocessing as mp
@@ -315,9 +370,14 @@ except RuntimeError:
 
 if __name__ == "__main__":
     logger.info("🎯 Starting full reinforcement training loop")
+    sys.stdout.flush()
+    sys.stderr.flush()
+    send_telegram_message("🔄 Entering reinforcement loop...")
     try:
         reinforcement_loop(iterations=3, games_per_iter=5, epochs=2)
     except Exception as e:
         error_msg = f"🔥 Training crashed with error:\n{e}\n{traceback.format_exc()}"
         logger.error(error_msg)
+        sys.stdout.flush()
+        sys.stderr.flush()
         send_telegram_message(error_msg)
