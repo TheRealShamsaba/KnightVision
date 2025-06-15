@@ -43,8 +43,15 @@ load_dotenv()
 import random
 import requests
 
-# Import send_telegram_message from telegram_utils
 from telegram_utils import send_telegram_message
+
+# Helper to escape unsafe Markdown for Telegram
+def safe_send_telegram(msg):
+    try:
+        safe_msg = msg.replace("*", "\\*").replace("_", "\\_").replace("[", "\\[").replace("]", "\\]")
+        send_telegram_message(safe_msg)
+    except Exception as e:
+        print("⚠️ Telegram failed:", e)
 
 def format_duration(seconds):
     mins, secs = divmod(int(seconds), 60)
@@ -149,7 +156,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     print(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
     sys.stdout.flush()
     sys.stderr.flush()
-    send_telegram_message(f"🤖 Starting KnightVision RL — Token: {os.getenv('TELEGRAM_BOT_TOKEN')[:10]}... | Chat ID: {os.getenv('TELEGRAM_CHAT_ID')}")
+    send_telegram_message("🤖 Starting KnightVision RL — token and chat ID loaded successfully.")
 
     for i in range(iterations):
         send_telegram_message(f"🌀 Iteration {i+1}/{iterations} started...")
