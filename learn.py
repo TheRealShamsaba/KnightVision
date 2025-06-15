@@ -307,6 +307,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 sys.stdout.flush()
                 sys.stderr.flush()
 
+            # Ensure optimizer is defined before training
+            optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
             # --- Example of replacing manual dataloader iteration with for loop ---
             # (Assuming the following block was previously present somewhere in train_model or similar:)
             # dataloader_iter = iter(dataloader)
@@ -322,14 +325,17 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             #
             # (This comment is here for clarity based on the patch instructions)
 
+            print(f"🔁 Starting training: epochs={epochs}, batch_size={2048}")
             result = train_model(
                 model,
                 combined_data,
+                optimizer,
                 epochs=epochs,
                 batch_size=2048,
                 device='cuda' if torch.cuda.is_available() else 'cpu',
                 pin_memory=False
             )
+            print("✅ Training result:", result)
             avg_loss = sum(result['losses']) / len(result['losses'])
             print(f"📤 Training step {global_step} complete. Avg Loss: {avg_loss:.5f}")
             sys.stdout.flush()
