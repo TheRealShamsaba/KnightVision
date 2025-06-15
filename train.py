@@ -2,6 +2,8 @@ print("Training script loaded...")
 import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+# Ensure NUM_SELFPLAY_GAMES is set in the environment with a default of "50"
+os.environ["NUM_SELFPLAY_GAMES"] = os.getenv("NUM_SELFPLAY_GAMES", "50")
 try:
     import google.colab
     IN_COLAB = True
@@ -31,6 +33,7 @@ import chess
 import chess.pgn
 from torch.utils.data import Dataset, DataLoader
 from datetime import datetime
+from self_play import generate_self_play_data
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ## Do not set multiprocessing start method globally here; move to main block.
 from torch.utils.tensorboard import SummaryWriter
@@ -242,6 +245,16 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
             if i % 5 == 0:
                 print(f"Epoch {epoch+1} | Batch {i+1}/{len(dataloader)} | Loss: {loss.item():.4f} | GPU Mem: {torch.cuda.memory_allocated(device) / 1e6:.1f}MB")
 
+        # ♟️ Self-play after each epoch
+        print("♟️ Generating self-play games...")
+        num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", 50))
+        new_selfplay_data = generate_self_play_data(model=model, num_games=num_selfplay_games, device=device)
+        if new_selfplay_data:
+            data.extend(new_selfplay_data)
+            print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
+        else:
+            print("⚠️ No self-play games generated.")
+
         # 🔥 Log loss to TensorBoard (per epoch)
         writer.add_scalar("Loss/Total", total_loss, epoch)
         writer.add_scalar("Loss/Policy", loss_policy.item(), epoch)
@@ -249,7 +262,8 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
 
         if last_moves is not None and preds_policy.size(0) == last_moves.size(0) and preds_policy.size(0) != 0:
             _, predicted_moves = torch.max(preds_policy, 1)
-            accuracy = (predicted_moves == last_moves.to(predicted_moves.device)).float().mean().item()
+            last_moves = last_moves.to(predicted_moves.device)
+            accuracy = (predicted_moves == last_moves).float().mean().item()
         else:
             accuracy = 0.0
         writer.add_scalar("Metrics/Accuracy", accuracy, epoch)
@@ -358,7 +372,7 @@ def capture_and_train():
                 optimizer=optimizer,
                 start_epoch=start_epoch,
                 epochs=100,
-                batch_size=1024,
+                batch_size=2048,
                 device=device,
                 pin_memory=True
             )

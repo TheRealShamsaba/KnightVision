@@ -147,32 +147,6 @@ def self_play(model, num_games=100):
         if torch.cuda.is_available():
             print(f"💾 VRAM: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
 
-    import json
-    import numpy as np
-
-    class NumpyEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            return super().default(obj)
-
-    save_path = os.path.join(BASE_DIR, f"self_play_data_{time.strftime('%Y-%m-%d_%H-%M-%S')}.jsonl")
-    with open(save_path, "w") as f:
-        for state, move, outcome in data:
-            f.write(json.dumps({
-                "state": state,
-                "move": move,
-                "outcome": outcome
-            }, cls=NumpyEncoder) + "\n")
-    print(f"💾 Saved self-play data to {save_path} — {len(data)} samples.")
-
-    print(f"📊 Total samples generated: {len(data)}")
-    try:
-        send_telegram_message(f"✅ Self-play completed. {len(data)} samples generated.")
-    except Exception as e:
-        print(f"⚠️ Telegram send failed: {e}")
-    print(f"🧪 self_play() function execution finished. Total samples: {len(data)}", flush=True)
-    print("✅ All self-play games completed.")
     return data
 
 
@@ -197,5 +171,25 @@ if __name__ == "__main__":
     model.to(device)
     print(f"✅ Loaded model from {model_path}")
     data = self_play(model, num_games=50)
+
+    import json
+    import numpy as np
+
+    class NumpyEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return super().default(obj)
+
+    save_path = os.path.join(BASE_DIR, f"self_play_data_{time.strftime('%Y-%m-%d_%H-%M-%S')}.jsonl")
+    with open(save_path, "w") as f:
+        for state, move, outcome in data:
+            f.write(json.dumps({
+                "state": state,
+                "move": move,
+                "outcome": outcome
+            }, cls=NumpyEncoder) + "\n")
+    print(f"💾 Saved self-play data to {save_path} — {len(data)} samples.")
+
     print("🧪 self_play() execution finished.")
     logger.info("Generated %s samples from self-play", len(data))

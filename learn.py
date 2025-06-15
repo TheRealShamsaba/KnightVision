@@ -217,6 +217,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         logger.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
         sys.stdout.flush()
         sys.stderr.flush()
+        # Initial self-play for this iteration
         try:
             print("🔁 Self-play starting...", flush=True)
             print(f"💾 Current training epoch: {i+1}", flush=True)
@@ -229,7 +230,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             if selfplay_data:
                 print("[DEBUG] First sample from self_play:", selfplay_data[0])
                 sys.stdout.flush()
-            # === DEBUG BLOCK: print number of samples ===
             print(f"✅ Self-play returned {len(selfplay_data)} samples")
             sys.stdout.flush()
             sys.stderr.flush()
@@ -271,10 +271,16 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                     print(f"⚠️ Telegram failed: {e}")
                 print("📨 Sent message:", msg_selfplay_complete)
                 print("♟️ Self-play finished with", len(selfplay_data), "games.")
-                # Optionally print first game
                 logger.debug(f"🔍 Sample self-play game: {selfplay_data[0]}")
                 sys.stdout.flush()
                 sys.stderr.flush()
+            # --- Removed saving self-play data to disk ---
+            # timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            # filename = os.path.join(DATA_DIR, f'selfplay_{timestamp}.jsonl')
+            # with open(filename, 'w') as f:
+            #     for game in selfplay_data:
+            #         f.write(json.dumps(game) + '\n')
+            # print(f"✅ Self-play data saved to {filename}")
         except Exception as e:
             error_details = traceback.format_exc()
             logger.error(f"🔥 Self-play crashed: {e}\n{error_details}")
@@ -321,6 +327,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 human_data = [json.loads(line) for line in f]
 
             start_time = time.time()
+            # Maintain a list to accumulate new self-play games for next batch
+            if 'next_selfplay_data' not in locals():
+                next_selfplay_data = []
             combined_data = selfplay_data + human_data
             try:
                 import pynvml
@@ -335,23 +344,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 sys.stdout.flush()
                 sys.stderr.flush()
 
-            # Ensure optimizer is defined before training
             optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-            # --- Example of replacing manual dataloader iteration with for loop ---
-            # (Assuming the following block was previously present somewhere in train_model or similar:)
-            # dataloader_iter = iter(dataloader)
-            # for i in range(len(dataloader)):
-            #     try:
-            #         boards_np, moves, outcomes = next(dataloader_iter)
-            #     except Exception as e:
-            #         print(f"⚠️ Data loading error: {e}")
-            #         continue
-            #
-            # Now, use:
-            # for i, (boards_np, moves, outcomes) in enumerate(dataloader):
-            #
-            # (This comment is here for clarity based on the patch instructions)
 
             print(f"🔁 Starting training: epochs={epochs}, batch_size={2048}")
             result = train_model(
@@ -408,11 +401,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             except Exception as e:
                 print(f"⚠️ Telegram failed: {e}")
             print("📨 Sent message:", msg_ckpt)
-            # Periodic autosave to backup file
             if global_step % 2 == 0:
                 autosave_path = os.path.join(CHECKPOINT_DIR, "autosave_model.pth")
                 torch.save(model.state_dict(), autosave_path)
-                # Notify after autosave
                 try:
                     send_telegram_message("💾 Autosave checkpoint saved to main directory.")
                 except Exception as e:
@@ -428,6 +419,23 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             torch.save(model.state_dict(), drive_checkpoint_path)
             checkpoints_meta.append((global_step, avg_loss))
             global_step += 1
+
+            # === Trigger additional self-play after training epoch/batch ===
+            try:
+                send_telegram_message("🔁 Mid-training self-play triggered after training batch...")
+                logger.info("🔁 Mid-training self-play triggered after training batch...")
+                sys.stdout.flush()
+                sys.stderr.flush()
+                new_selfplay_games = self_play(model, num_games=games_per_iter)
+                logger.info(f"✅ Mid-training self-play completed. {len(new_selfplay_games)} games generated.")
+                send_telegram_message(f"✅ Mid-training self-play completed. {len(new_selfplay_games)} games generated.")
+                # Instead of immediately using, accumulate for next batch
+                if 'next_selfplay_data' not in locals():
+                    next_selfplay_data = []
+                next_selfplay_data.extend(new_selfplay_games)
+            except Exception as e:
+                logger.error(f"🔥 Error during mid-training self-play: {e}")
+                send_telegram_message(f"🔥 Error during mid-training self-play: {e}")
 
             # --- Telegram notification block ---
 
@@ -501,6 +509,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         sys.stderr.flush()
         # Notify via Telegram after training step and model save
         send_telegram_message("🤖 Training completed successfully and model updated.")
+        # Prepare self-play data for next iteration or epoch
+        if 'next_selfplay_data' in locals() and next_selfplay_data:
+            selfplay_data = next_selfplay_data
+            next_selfplay_data = []
 
     # Save top checkpoints
     checkpoints_meta.sort(key=lambda x: x[1])  # sort by lowest loss
