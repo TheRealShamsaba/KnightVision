@@ -36,7 +36,7 @@ class ChessNet(nn.Module):
         self.value_fc2 = nn.Linear(512, 1)
 
     def forward(self, x):
-        with amp.autocast():
+        with amp.autocast(device_type='cuda', dtype=torch.float16):
             x = F.relu(self.bn1(self.conv1(x)))
             x = F.relu(self.bn2(self.conv2(x)))
 
