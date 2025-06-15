@@ -4,6 +4,7 @@ import time
 from telegram_utils import send_telegram_message
 print("Self-play script loaded...")
 print("✅ Telegram test message dispatched.")
+print("📋 Note: All Telegram messages will log their intent before sending.")
 
 try:
     send_telegram_message("📥 self_play.py loaded successfully.")
@@ -116,10 +117,15 @@ def self_play(model, num_games=100):
         for state, move_index in game_data:
             data.append((state, move_index, outcome))
 
-        try:
-            send_telegram_message(f"🏁 Game finished. Moves: {len(game_data)} | Outcome: {outcome}")
-        except Exception as e:
-            print(f"⚠️ Telegram send failed: {e}")
+        print(f"📩 Preparing to send game completion message: Moves={len(game_data)}, Outcome={outcome}")
+        message = f"🏁 Game finished. Moves: {len(game_data)} | Outcome: {outcome}"
+        if not message.strip():
+            print("⚠️ Telegram message was empty. Skipping send.")
+        else:
+            try:
+                send_telegram_message(message)
+            except Exception as e:
+                print(f"⚠️ Telegram send failed: {e}")
 
         if len(game_data) > 10:
             sample = game_data[0]
