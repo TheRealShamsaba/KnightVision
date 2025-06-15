@@ -451,7 +451,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         sys.stdout.flush()
         sys.stderr.flush()
         # Notify via Telegram after training step and model save
-        from telegram_utils import send_telegram_message
         send_telegram_message("🤖 Training completed successfully and model updated.")
 
     # Save top checkpoints
