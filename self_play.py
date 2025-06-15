@@ -1,5 +1,6 @@
 # self_play.py
 import os
+import time
 print("Self-play script loaded...")
 
 try:
@@ -28,6 +29,13 @@ import random
 import torch
 import logging
 from model import ChessNet
+import psutil
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"🖥️ Using device: {device}")
+
+if torch.cuda.is_available():
+    print(f"💾 VRAM usage: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB / {torch.cuda.max_memory_allocated(device) / 1024 ** 2:.2f} MB")
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +43,7 @@ logger = logging.getLogger(__name__)
 def self_play(model, num_games=100):
     data = []
     model.eval()
+    model.to(device)
     print(f"Starting self-play with {num_games} games...")
     for _ in range(num_games):
         gs = GameState()
@@ -45,13 +54,13 @@ def self_play(model, num_games=100):
             if not valid_moves:
                 break
 
-            board_tensor = torch.tensor([encode_board(gs.board)]).float()
+            board_tensor = torch.tensor([encode_board(gs.board)]).float().to(device)
             with torch.no_grad():
                 policy_logits, _ = model(board_tensor)
-            policy = torch.softmax(policy_logits.squeeze(), dim = 0).cpu().numpy()
+            policy = torch.softmax(policy_logits.squeeze(), dim=0).detach().cpu().numpy()
 
             legal_indices = [encode_move(m.startRow, m.startCol, m.endRow, m.endCol) for m in valid_moves]
-            legal_probs = [policy[i] for i in legal_indices]
+            legal_probs = [policy[i] if i < len(policy) else 0 for i in legal_indices]
 
             total_weight = sum(legal_probs)
             if total_weight == 0:
@@ -63,6 +72,8 @@ def self_play(model, num_games=100):
             move_index = encode_move(move.startRow, move.startCol, move.endRow, move.endCol)
             game_data.append((encode_board(gs.board), move_index))
             gs.makeMove(move)
+
+            time.sleep(0.01)
 
         # Assign outcome based on game end state
         if gs.inCheck() and len(gs.getValidMoves()) == 0:
@@ -84,6 +95,9 @@ def self_play(model, num_games=100):
                 outcome = (white_material - black_material) / max(white_material, black_material)
         for state, move_index in game_data:
             data.append((state, move_index, outcome))
+        print(f"🧠 RAM usage: {psutil.virtual_memory().percent}%")
+        if torch.cuda.is_available():
+            print(f"💾 VRAM: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
 
     return data
 
@@ -97,7 +111,10 @@ def piece_value(piece):
 if __name__ == "__main__":
     model = ChessNet()
     model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
-    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
     print(f"✅ Loaded model from {model_path}")
     data = self_play(model, num_games=50)
     logger.info("Generated %s samples from self-play", len(data))

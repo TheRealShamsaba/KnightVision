@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.cuda.amp import autocast
+from torch import amp
 
 class ChessNet(nn.Module):
     def __init__(self):
@@ -36,7 +36,7 @@ class ChessNet(nn.Module):
         self.value_fc2 = nn.Linear(512, 1)
 
     def forward(self, x):
-        with autocast():
+        with amp.autocast():
             x = F.relu(self.bn1(self.conv1(x)))
             x = F.relu(self.bn2(self.conv2(x)))
 

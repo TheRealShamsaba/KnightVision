@@ -1,4 +1,6 @@
 import os
+if "COLAB_GPU" in os.environ:
+    BASE_DIR = "/content/drive/MyDrive/KnightVision"
 BASE_DIR = os.environ.get("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import numpy as np
@@ -37,4 +39,4 @@ def encode_move(start_row, start_col, end_row, end_col):
     """
     start = start_row * 8 + start_col
     end = end_row * 8 + end_col
-    return start * 64 + end 
+    return start * 64 + end

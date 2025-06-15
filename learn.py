@@ -36,8 +36,10 @@ import random
 import requests
 
 def send_telegram_message(msg):
-    telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", None)
-    telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    assert telegram_token is not None, "❌ TELEGRAM_BOT_TOKEN is not set!"
+    assert telegram_chat_id is not None, "❌ TELEGRAM_CHAT_ID is not set!"
     print(f"🧪 DEBUG: TELEGRAM_BOT_TOKEN={telegram_token}, TELEGRAM_CHAT_ID={telegram_chat_id}")
     if not telegram_token or not telegram_chat_id:
         logger = logging.getLogger(__name__)
@@ -69,13 +71,9 @@ from train import train_model
 print("✅ Script loaded.", flush=True)
 
 # === SETUP ===
-if is_colab():
-    from google.colab import drive
-    drive.mount('/content/drive', force_remount=True)
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-else:
-    base_dir_env = os.getenv("BASE_DIR")
-    BASE_DIR = base_dir_env if base_dir_env else os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+from google.colab import drive
+drive.mount('/content/drive', force_remount=True)
+BASE_DIR = "/content/drive/MyDrive/KnightVision"
 
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -121,6 +119,11 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
 
+    # Save initial model backup
+    initial_model_path = os.path.join(CHECKPOINT_DIR, "initial_model.pth")
+    torch.save(model.state_dict(), initial_model_path)
+    send_telegram_message("💾 Initial model checkpoint saved.")
+
     writer = SummaryWriter(log_dir)
     writer.add_scalar("Debug/Start", 1.0, 0)
     writer.flush()
@@ -143,6 +146,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     checkpoints_meta = []
 
     model = load_or_initialize_model(model_path)
+    if not os.path.exists(CHECKPOINT_DIR):
+        os.makedirs(CHECKPOINT_DIR)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
     print(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
     send_telegram_message("📦 Model loaded and ready. Beginning reinforcement loop...")
 
@@ -210,6 +217,12 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
             ckpt_path = os.path.join(checkpoint_dir, f"model_step_{global_step}.pth")
             torch.save(model.state_dict(), ckpt_path)
+            # Periodic autosave to backup file
+            if global_step % 2 == 0:
+                torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "autosave_model.pth"))
+                send_telegram_message("💾 Autosave model checkpoint saved.")
+            with open(os.path.join(checkpoint_dir, f"model_step_{global_step}.txt"), 'w') as ts_file:
+                ts_file.write(f"Checkpoint saved at step {global_step}")
             torch.save(model.state_dict(), drive_checkpoint_path)
             checkpoints_meta.append((global_step, avg_loss))
             global_step += 1
@@ -276,6 +289,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             gc.collect()
 
         torch.save(model.state_dict(), model_path)
+        with open(os.path.join(checkpoint_dir, f"model_step_{global_step}.txt"), 'w') as ts_file:
+            ts_file.write(f"Checkpoint saved at step {global_step}")
         logger.info(f"📦 Model saved after iteration {i+1}")
 
     # Save top checkpoints
@@ -299,6 +314,11 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     writer.close()
     send_telegram_message("🏁 Reinforcement training loop has finished.")
     total_duration = time.time() - total_start
+    with open(os.path.join(BASE_DIR, "last_training_summary.txt"), 'w') as f:
+        f.write(f"Training completed in {format_duration(total_duration)}\nBest steps: {best_steps}")
+    # Backup final model
+    torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "final_model.pth"))
+    send_telegram_message("🧠 Final model checkpoint saved to Drive.")
     logger.info(f"🕒 Total training time: {format_duration(total_duration)}")
     logger.info("✅ Reinforcement learning complete.")
 
@@ -310,4 +330,9 @@ except RuntimeError:
 
 if __name__ == "__main__":
     logger.info("🎯 Starting full reinforcement training loop")
-    reinforcement_loop(iterations=3, games_per_iter=5, epochs=2)
+    try:
+        reinforcement_loop(iterations=3, games_per_iter=5, epochs=2)
+    except Exception as e:
+        error_msg = f"🔥 Training crashed with error:\n{e}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        send_telegram_message(error_msg)

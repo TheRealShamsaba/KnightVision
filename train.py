@@ -133,12 +133,31 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     for epoch in range(epochs):
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
+            torch.save({
+                'epoch': epoch + 1,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': loss.item() if 'loss' in locals() else None,
+            }, os.path.join(checkpoint_dir, f"checkpoint_epoch_{epoch+1}.pth"))
             message = f"📦 train.py checkpoint saved — Epoch {epoch+1}"
             print("⚠️ Attempting to send message:", message)
             send_telegram_message(message)
         total_loss = 0
         total_reward = 0
-        for i, (boards_np, moves, outcomes) in enumerate(dataloader):
+
+        dataloader_iter = iter(dataloader)
+        loss_policy = torch.tensor(0.0)
+        loss_value = torch.tensor(0.0)
+        preds_policy = torch.tensor([])
+        preds_value = torch.tensor([])
+
+        for i in range(len(dataloader)):
+            try:
+                boards_np, moves, outcomes = next(dataloader_iter)
+            except Exception as e:
+                print(f"⚠️ Data loading error: {e}")
+                continue
+
             boards = boards_np.float()
             moves = moves.long()
             outcomes = outcomes.float()
@@ -162,6 +181,11 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             loss_policy = F.cross_entropy(preds_policy.float(), moves)
             loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
             loss = loss_policy + loss_value
+
+            if torch.isnan(loss) or torch.isinf(loss):
+                print("⚠️ Skipping batch due to invalid loss (NaN or Inf)")
+                continue
+
             message = f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}"
             print("⚠️ Attempting to send message:", message)
             send_telegram_message(message)
@@ -180,12 +204,12 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             if i % 5 == 0:
                 print(f"Epoch {epoch+1} | Batch {i+1}/{len(dataloader)} | Loss: {loss.item():.4f} | GPU Mem: {torch.cuda.memory_allocated(device) / 1e6:.1f}MB")
 
-        # 🔥 Log loss to TensorBoard
+        # 🔥 Log loss to TensorBoard (per epoch)
         writer.add_scalar("Loss/Total", total_loss, epoch)
         writer.add_scalar("Loss/Policy", loss_policy.item(), epoch)
         writer.add_scalar("Loss/Value", loss_value.item(), epoch)
 
-        if preds_policy.size(0) == moves.size(0):
+        if preds_policy.size(0) == moves.size(0) and preds_policy.size(0) != 0:
             _, predicted_moves = torch.max(preds_policy, 1)
             accuracy = (predicted_moves == moves).float().mean().item()
         else:
@@ -214,8 +238,10 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         all_scores.append(score)
 
         # Log model predictions and weights as histograms
-        writer.add_histogram("Distributions/Policy", preds_policy, epoch)
-        writer.add_histogram("Distributions/Value", preds_value, epoch)
+        if preds_policy.numel() > 0:
+            writer.add_histogram("Distributions/Policy", preds_policy, epoch)
+        if preds_value.numel() > 0:
+            writer.add_histogram("Distributions/Value", preds_value, epoch)
 
         for name, param in model.named_parameters():
             writer.add_histogram(f"Weights/{name}", param, epoch)
@@ -228,9 +254,11 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             total_reward / len(dataloader.dataset),
         )
 
+    model.eval()
+
     writer.flush()
     writer.close()
-    message = "🏁 train.py finished training."
+    message = "🏁 *train.py finished training.*\nAll epochs completed successfully. Check TensorBoard for metrics and the checkpoints folder for saved models."
     print("⚠️ Attempting to send message:", message)
     send_telegram_message(message)
     return {
@@ -255,12 +283,12 @@ def send_telegram_message(message):
                     subprocess.run(["pip", "install", "python-telegram-bot==13.15"])
                     import telegram
             bot = telegram.Bot(token=telegram_token)
-            bot.send_message(chat_id=telegram_chat_id, text=message)
+            bot.send_message(chat_id=telegram_chat_id, text=message, parse_mode=telegram.ParseMode.MARKDOWN)
         except Exception as e:
             print(f"Failed to send Telegram message: {e}")
 
 # Send notification that training started
 send_telegram_message("🚀 Training started...")
-print(f"✅ Telegram message function test: {telegram_token=}, {telegram_chat_id=}")
+print(f"✅ Telegram configured: TOKEN is {'set' if telegram_token else 'missing'}, CHAT_ID is {'set' if telegram_chat_id else 'missing'}")
 
 train_model(model, dataloader, epochs=10000, lr=1e-3)
