@@ -61,7 +61,7 @@ class GameState():
 
         # Draw detection support
         self.moveLogHistory = []
-        self.boardHistory = []
+        self.boardHistory = {}
         self.halfMoveClock = 0  # for 50-move rule
         self.positionCount = {}  # for threefold repetition
         # New draw detection
@@ -648,29 +648,22 @@ class Move():
         return self.colsToFiles[c] + self.rowsToRanks[r]
 
 
-    # Load a position from a FEN string
-    
     def checkForEndConditions(self, moves):
-        # Checkmate and stalemate logic
+        self.checkMate = False
+        self.staleMate = False
+        self.draw50 = self.halfMoveClock >= 100  # 50 full moves = 100 half-moves
+        self.drawRepetition = self.positionCounts.get(self.hashBoard(), 0) >= 3
+
         if len(moves) == 0:
             if self.inCheck():
-                return True, False, False, False  # checkmate
+                self.checkMate = True
             else:
-                return False, True, False, False  # stalemate
+                self.staleMate = True
 
-        # 50-move rule
-        if self.halfMoveClock >= 100:
-            return False, False, True, False  # 50-move draw
-
-        # 3-fold repetition
-        current_hash = self.hashBoard()
-        if self.positionCounts.get(current_hash, 0) >= 3:
-            return False, False, False, True  # 3-fold repetition draw
-
-        return False, False, False, False
+        return self.checkMate, self.staleMate, self.draw50, self.drawRepetition
 
     def hashBoard(self):
-        return ''.join([''.join(row) for row in self.board]) + self.whiteToMove.__str__()
+        return str(self.board) + str(self.whiteToMove)
 
     def isDraw(self):
         # 50-move rule
