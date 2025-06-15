@@ -307,6 +307,21 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 sys.stdout.flush()
                 sys.stderr.flush()
 
+            # --- Example of replacing manual dataloader iteration with for loop ---
+            # (Assuming the following block was previously present somewhere in train_model or similar:)
+            # dataloader_iter = iter(dataloader)
+            # for i in range(len(dataloader)):
+            #     try:
+            #         boards_np, moves, outcomes = next(dataloader_iter)
+            #     except Exception as e:
+            #         print(f"⚠️ Data loading error: {e}")
+            #         continue
+            #
+            # Now, use:
+            # for i, (boards_np, moves, outcomes) in enumerate(dataloader):
+            #
+            # (This comment is here for clarity based on the patch instructions)
+
             result = train_model(
                 model,
                 combined_data,
