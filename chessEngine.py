@@ -659,6 +659,9 @@ class GameState():
         fen_turn = 'w' if self.whiteToMove else 'b'
         return f"{fen_board} {fen_turn}"
 
+    def getBoardStateKey(self):
+        return str(self.board) + str(self.whiteToMove)
+
 class Move():
     # maps keys in values
     # key : value
