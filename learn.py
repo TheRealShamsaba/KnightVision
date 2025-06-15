@@ -260,10 +260,20 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             raise e
 
         human_batches_path = os.path.join(DATA_DIR, "human_batches")
-        batch_files = sorted([
-            os.path.join(human_batches_path, f) for f in os.listdir(human_batches_path)
-            if f.startswith("games_part_") and f.endswith(".jsonl")
-        ])
+        import errno
+
+        try:
+            batch_files = sorted([
+                os.path.join(human_batches_path, f)
+                for f in os.listdir(human_batches_path)
+                if f.startswith("games_part_") and f.endswith(".jsonl")
+            ])
+        except OSError as e:
+            if e.errno == errno.EIO:
+                print(f"⚠️ Google Drive I/O error: {e}. Skipping human batch loading this round.")
+                batch_files = []
+            else:
+                raise
 
         logger.info(f"🧩 Total human batches: {len(batch_files)}")
         sys.stdout.flush()
@@ -438,6 +448,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         logger.info(f"📦 Model saved after iteration {i+1}")
         sys.stdout.flush()
         sys.stderr.flush()
+        # Notify via Telegram after training step and model save
+        from telegram_utils import send_telegram_message
+        send_telegram_message("🤖 Training completed successfully and model updated.")
 
     # Save top checkpoints
     checkpoints_meta.sort(key=lambda x: x[1])  # sort by lowest loss
