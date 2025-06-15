@@ -25,9 +25,15 @@ for gpu in physical_devices:
         sys.stdout.flush()
         sys.stderr.flush()
 
+
 # === Google Colab Drive Mount ===
-from google.colab import drive
-drive.mount('/content/drive', force_remount=True)
+try:
+    from google.colab import drive
+    import sys
+    if 'google.colab' in sys.modules:
+        drive.mount('/content/drive', force_remount=True)
+except Exception as e:
+    print(f"⚠️ Skipping Colab mount: {e}")
 
 # Set PyTorch default device and tensor type
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
