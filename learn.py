@@ -36,29 +36,8 @@ load_dotenv()
 import random
 import requests
 
-def send_telegram_message(msg):
-    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    assert telegram_token is not None, "❌ TELEGRAM_BOT_TOKEN is not set!"
-    assert telegram_chat_id is not None, "❌ TELEGRAM_CHAT_ID is not set!"
-    print(f"🧪 DEBUG: TELEGRAM_BOT_TOKEN={telegram_token}, TELEGRAM_CHAT_ID={telegram_chat_id}")
-    if not telegram_token or not telegram_chat_id:
-        logger = logging.getLogger(__name__)
-        logger.warning("⚠️ Telegram token or chat ID not set.")
-        return
-    url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
-    data = {
-        "chat_id": telegram_chat_id,
-        "text": msg,
-        "parse_mode": "Markdown"
-    }
-    try:
-        print(f"📡 Sending to Telegram: {url} with chat_id={telegram_chat_id}")
-        requests.post(url, data=data)
-        print(f"📤 Sent Telegram message: {msg}")
-    except Exception as e:
-        logger = logging.getLogger(__name__)
-        logger.warning(f"⚠️ Telegram send failed: {e}")
+# Import send_telegram_message from telegram_utils
+from telegram_utils import send_telegram_message
 
 def format_duration(seconds):
     mins, secs = divmod(int(seconds), 60)
