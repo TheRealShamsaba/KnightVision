@@ -291,4 +291,19 @@ def send_telegram_message(message):
 send_telegram_message("🚀 Training started...")
 print(f"✅ Telegram configured: TOKEN is {'set' if telegram_token else 'missing'}, CHAT_ID is {'set' if telegram_chat_id else 'missing'}")
 
-train_model(model, dataloader, epochs=10000, lr=1e-3)
+
+# Function to capture stdout and stderr during training and send via Telegram in chunks
+def capture_and_train():
+    import io
+    import contextlib
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+        train_model(model, dataloader, epochs=10000, lr=1e-3)
+    output = buffer.getvalue()
+    # Send output in chunks to avoid Telegram message size limits
+    for i in range(0, len(output), 4000):
+        chunk = output[i:i+4000]
+        send_telegram_message(f"🧾 *Captured Training Output* (part {i//4000 + 1}):\n```{chunk}```")
+
+# Call the new function instead of direct train_model
+capture_and_train()

@@ -254,6 +254,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 f"🧬 Stay tuned, the brain is evolving... 👾\n\n"
                 + random.choice(fun_endings)
             )
+            print("📨 Telegram message preview:\n", telegram_msg)
 
             send_telegram_message(telegram_msg)
             send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")

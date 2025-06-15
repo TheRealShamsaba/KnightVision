@@ -97,6 +97,9 @@ def self_play(model, num_games=100):
                 outcome = (white_material - black_material) / max(white_material, black_material)
         for state, move_index in game_data:
             data.append((state, move_index, outcome))
+
+        send_telegram_message(f"🏁 Game finished. Moves: {len(game_data)} | Outcome: {outcome}")
+
         if len(game_data) > 10:
             sample = game_data[0]
             send_telegram_message(f"🎯 Sample game generated with {len(game_data)} moves.\nFirst move index: {sample[1]}")

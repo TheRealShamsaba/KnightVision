@@ -25,3 +25,14 @@ def send_telegram_message(message, parse_mode="Markdown"):
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"❌ Failed to send Telegram message: {e}")
+
+
+# --- New function for sending self-play game reports ---
+def send_game_report(game_number, result, moves):
+    """
+    Sends a formatted message to Telegram with self-play game results.
+    """
+    message = f"♟️ *Self-Play Game {game_number}* Completed\n"
+    message += f"Result: *{result}*\n"
+    message += f"Moves: `{moves}`"
+    send_telegram_message(message)
