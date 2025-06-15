@@ -62,11 +62,10 @@ class GameState():
         # Draw detection support
         self.moveLogHistory = []
         self.boardHistory = {}
-        self.halfMoveClock = 0  # for 50-move rule
-        self.positionCount = {}  # for threefold repetition
-        # New draw detection
-        self.positionCounts = {}
+        # For 50-move rule
         self.halfMoveClock = 0
+        # For threefold repetition
+        self.boardStateCounter = {}
         self.draw50 = False
         self.drawRepetition = False
     def loadFEN(self, fen):
@@ -162,17 +161,12 @@ class GameState():
         self.moveLog.append(move)  # log the game
         # Update half-move clock for 50-move rule
         # Reset halfMoveClock to 0 if pawn moved or capture; otherwise increment
-        if move.pieceCaptured != "--" or move.pieceMoved[1].lower() == 'p':
+        if move.pieceCaptured != "--" or move.pieceMoved[1] == "P":
             self.halfMoveClock = 0
         else:
             self.halfMoveClock += 1
-        # Update repetition tracking
-        board_hash = self.hashBoard()
-        self.positionCounts[board_hash] = self.positionCounts.get(board_hash, 0) + 1
-        # Store current board position for threefold repetition (legacy)
-        board_string = str(self.board)
-        self.boardHistory.append(board_string)
-        self.positionCount[board_string] = self.positionCount.get(board_string, 0) + 1
+        # Update repetition tracking using boardStateCounter
+        self.boardStateCounter[self.getBoardStateKey()] = self.boardStateCounter.get(self.getBoardStateKey(), 0) + 1
         self.whiteToMove = not self.whiteToMove  # swap players
         # update the king's location
         if move.pieceMoved == 'wK':
@@ -656,21 +650,19 @@ class Move():
 
 
     def checkForEndConditions(self, moves):
-        # 50-move rule: 100 half-moves without pawn move or capture
-        draw50 = self.halfMoveClock >= 100
-        # Threefold repetition: check positionCounts dictionary for 3 or more occurrences
-        # Use hashBoard for position key
-        board_hash = self.hashBoard()
-        drawRepetition = self.positionCounts.get(board_hash, 0) >= 3
-        self.checkMate = False
-        self.staleMate = False
-
         if len(moves) == 0:
             if self.inCheck():
-                self.checkMate = True
+                return True, False, False, False  # checkmate
             else:
-                self.staleMate = True
-        return self.checkMate, self.staleMate, draw50, drawRepetition
+                return False, True, False, False  # stalemate
+        if self.halfMoveClock >= 100:
+            return False, False, True, False  # 50-move draw
+        if self.boardStateCounter.get(self.getBoardStateKey(), 0) >= 3:
+            return False, False, False, True  # 3-fold repetition
+        return False, False, False, False  # game not ended
+
+    def getBoardStateKey(self):
+        return str(self.board) + str(self.whiteToMove)
 
     def hashBoard(self):
         return str(self.board) + str(self.whiteToMove)
