@@ -148,6 +148,14 @@ def self_play(model, num_games=100):
             print(f"💾 VRAM: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
 
     import json
+    import numpy as np
+
+    class NumpyEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return super().default(obj)
+
     save_path = os.path.join(BASE_DIR, f"self_play_data_{time.strftime('%Y-%m-%d_%H-%M-%S')}.jsonl")
     with open(save_path, "w") as f:
         for state, move, outcome in data:
@@ -155,7 +163,7 @@ def self_play(model, num_games=100):
                 "state": state,
                 "move": move,
                 "outcome": outcome
-            }) + "\n")
+            }, cls=NumpyEncoder) + "\n")
     print(f"💾 Saved self-play data to {save_path} — {len(data)} samples.")
 
     print(f"📊 Total samples generated: {len(data)}")

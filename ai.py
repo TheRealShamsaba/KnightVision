@@ -14,15 +14,13 @@ INDEX_TO_PIECE = { v:k for k, v in PIECE_TO_INDEX.items()}
 
 def encode_board(board):
     """
-    Encodes the 8x8 board into a (12, 8, 8) tensor (channel per piece type).
+    Optimized: Encodes the 8x8 board into a (12, 8, 8) tensor (channel per piece type).
     """
     encoded = np.zeros((12, 8, 8), dtype=np.float32)
-    for r in range(8):
-        for c in range(8):
-            square = board[r][c]
+    for r, row in enumerate(board):
+        for c, square in enumerate(row):
             if square != "--":
-                idx = PIECE_TO_INDEX[square]
-                encoded[idx, r, c] = 1
+                encoded[PIECE_TO_INDEX.get(square, 0), r, c] = 1.0
     return encoded
 
 def decode_move_index(index):

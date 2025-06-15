@@ -262,6 +262,18 @@ def train_model(model, dataloader, optimizer, start_epoch=0, epochs=10000, lr=1e
         print(f"🏋️‍♂️ Reward: {avg_reward:.4f}")
         print(f"📈 Score: {score:.2f}/100\n")
 
+        if (epoch + 1) % 1 == 0:
+            message = (
+                f"📊 *Training Progress — Epoch {epoch+1}*\n"
+                f"🎯 Accuracy: {accuracy * 100:.2f}%\n"
+                f"📉 Loss: {total_loss:.4f}\n"
+                f"🏋️‍♂️ Avg Reward: {avg_reward:.4f}\n"
+                f"📈 Score: {score:.2f}/100"
+            )
+            print("⚠️ Attempting to send message:", message)
+            send_telegram_message(message)
+            print("✅ Telegram message sent.")
+
         if (epoch + 1) % 5 == 0:
             message = f"📊 train.py progress — Epoch {epoch+1}: Score {score:.2f}"
             print("⚠️ Attempting to send message:", message)
