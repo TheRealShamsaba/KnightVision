@@ -1,7 +1,7 @@
 import os
 import requests
 
-def send_telegram_message(message, parse_mode="Markdown"):
+def send_telegram_message(message, parse_mode="HTML"):
     """
     Sends a message to a Telegram bot using credentials stored in environment variables.
     Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to be set in .env or system environment.
