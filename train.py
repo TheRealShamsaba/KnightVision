@@ -249,7 +249,7 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
 
         if last_moves is not None and preds_policy.size(0) == last_moves.size(0) and preds_policy.size(0) != 0:
             _, predicted_moves = torch.max(preds_policy, 1)
-            accuracy = (predicted_moves == last_moves).float().mean().item()
+            accuracy = (predicted_moves == last_moves.to(predicted_moves.device)).float().mean().item()
         else:
             accuracy = 0.0
         writer.add_scalar("Metrics/Accuracy", accuracy, epoch)
