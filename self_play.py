@@ -53,6 +53,7 @@ def self_play(model, num_games=100, device=None):
     data = []
     model.eval()
     model.to(device)
+    model = model.float()
     try:
         send_telegram_message(f"🤖 Starting self-play with {num_games} games...")
     except Exception as e:
