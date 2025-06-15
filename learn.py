@@ -65,12 +65,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # === Model, Dataset, Optimizer ===
 model = ChessNet().to(device)
 dataset = ChessPGNDataset(games_path, max_samples=100000)
+training_data = [dataset[i] for i in range(len(dataset))]
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # === Start Training ===
 train_model(
     model=model,
-    data=dataset,
+    data=training_data,
     optimizer=optimizer,
     start_epoch=0,
     epochs=10000,
@@ -582,12 +583,13 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ChessNet().to(device)
     dataset = ChessPGNDataset(games_path, max_samples=100000)
+    training_data = [dataset[i] for i in range(len(dataset))]
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # === Train the model ===
     train_model(
         model=model,
-        data=dataset,
+        data=training_data,
         optimizer=optimizer,
         start_epoch=0,
         epochs=10000,

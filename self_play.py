@@ -48,7 +48,7 @@ if torch.cuda.is_available():
 logger = logging.getLogger(__name__)
 
 
-def self_play(model, num_games=100):
+def self_play(model, num_games=100, device=None):
     print("✅ self_play() function has started executing", flush=True)
     data = []
     model.eval()
@@ -69,7 +69,7 @@ def self_play(model, num_games=100):
         gs = GameState()
         game_data = []
 
-        for _ in range(100):  # max moves per game
+        while True:  # Continue until the game ends naturally
             valid_moves = gs.getValidMoves()
             print(f"♟️ Valid moves count: {len(valid_moves)}")
             if not valid_moves:
@@ -156,8 +156,8 @@ def piece_value(piece):
     return values.get(piece.upper(), 0)
 
 
-def generate_self_play_data(model, num_games=50):
-    return self_play(model, num_games)
+def generate_self_play_data(model, num_games=50, device=None):
+    return self_play(model, num_games, device)
 
 if __name__ == "__main__":
     model = ChessNet()
@@ -173,7 +173,7 @@ if __name__ == "__main__":
         print(f"⚠️ Telegram send failed: {e}")
     model.to(device)
     print(f"✅ Loaded model from {model_path}")
-    data = self_play(model, num_games=50)
+    data = self_play(model, num_games=50, device=device)
 
     import json
     import numpy as np
