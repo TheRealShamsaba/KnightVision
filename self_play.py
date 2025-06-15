@@ -1,6 +1,7 @@
 # self_play.py
 import os
 import time
+from telegram_utils import send_telegram_message
 print("Self-play script loaded...")
 
 try:
@@ -44,6 +45,7 @@ def self_play(model, num_games=100):
     data = []
     model.eval()
     model.to(device)
+    send_telegram_message(f"🤖 Starting self-play with {num_games} games...")
     print(f"Starting self-play with {num_games} games...")
     for _ in range(num_games):
         gs = GameState()
@@ -95,10 +97,14 @@ def self_play(model, num_games=100):
                 outcome = (white_material - black_material) / max(white_material, black_material)
         for state, move_index in game_data:
             data.append((state, move_index, outcome))
+        if len(game_data) > 10:
+            sample = game_data[0]
+            send_telegram_message(f"🎯 Sample game generated with {len(game_data)} moves.\nFirst move index: {sample[1]}")
         print(f"🧠 RAM usage: {psutil.virtual_memory().percent}%")
         if torch.cuda.is_available():
             print(f"💾 VRAM: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
 
+    send_telegram_message(f"✅ Self-play completed. {len(data)} samples generated.")
     return data
 
 
@@ -114,6 +120,7 @@ if __name__ == "__main__":
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
     model.load_state_dict(torch.load(model_path, map_location=device))
+    send_telegram_message("📦 Self-play started from __main__ with loaded model.")
     model.to(device)
     print(f"✅ Loaded model from {model_path}")
     data = self_play(model, num_games=50)

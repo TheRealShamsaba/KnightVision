@@ -157,9 +157,22 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
     for i in range(iterations):
         logger.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
-        selfplay_data = self_play(model, num_games=games_per_iter)
-        send_telegram_message(f"♟️ Self-play complete — {len(selfplay_data)} games generated.")
-        logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
+        try:
+            selfplay_data = self_play(model, num_games=games_per_iter)
+            logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
+            if len(selfplay_data) == 0:
+                logger.warning("⚠️ Self-play returned 0 games. This may indicate a bug.")
+                send_telegram_message("⚠️ Self-play returned 0 games. Please inspect the logic.")
+            else:
+                logger.info("✅ Self-play completed successfully.")
+                send_telegram_message(f"♟️ Self-play complete — {len(selfplay_data)} games generated.")
+                # Optionally print first game
+                logger.debug(f"🔍 Sample self-play game: {selfplay_data[0]}")
+        except Exception as e:
+            error_details = traceback.format_exc()
+            logger.error(f"🔥 Self-play crashed: {e}\n{error_details}")
+            send_telegram_message(f"🔥 Self-play crashed with error:\n{e}")
+            raise e
 
         human_batches_path = os.path.join(DATA_DIR, "human_batches")
         batch_files = sorted([
