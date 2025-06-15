@@ -114,25 +114,21 @@ def self_play(model, num_games=100):
                 outcome = 0
             else:
                 outcome = (white_material - black_material) / max(white_material, black_material)
-        for state, move_index in game_data:
-            data.append((state, move_index, outcome))
-
-        print(f"📩 Preparing to send game completion message: Moves={len(game_data)}, Outcome={outcome}")
         message = f"🏁 Game finished. Moves: {len(game_data)} | Outcome: {outcome}"
-        if not message.strip():
-            print("⚠️ Telegram message was empty. Skipping send.")
-        else:
-            try:
-                send_telegram_message(message)
-            except Exception as e:
-                print(f"⚠️ Telegram send failed: {e}")
+        print("📨 Message to send:", message)
+        try:
+            send_telegram_message(message)
+        except Exception as e:
+            print(f"⚠️ Telegram send failed: {e}")
 
-        if len(game_data) > 10:
+        if game_data:
             sample = game_data[0]
             try:
-                send_telegram_message(f"🎯 Sample game generated with {len(game_data)} moves.\nFirst move index: {sample[1]}")
+                send_telegram_message(f"🎯 Sample game generated.\nMoves: {len(game_data)} | First move index: {sample[1]}")
             except Exception as e:
                 print(f"⚠️ Telegram send failed: {e}")
+        else:
+            print("⚠️ No game data generated to report.")
         print(f"🧠 RAM usage: {psutil.virtual_memory().percent}%")
         print(f"✅ Game {_ + 1} complete. Moves played: {len(game_data)} | Outcome: {outcome}", flush=True)
         if torch.cuda.is_available():
@@ -144,6 +140,7 @@ def self_play(model, num_games=100):
     except Exception as e:
         print(f"⚠️ Telegram send failed: {e}")
     print(f"🧪 self_play() function execution finished. Total samples: {len(data)}", flush=True)
+    print("✅ All self-play games completed.")
     return data
 
 

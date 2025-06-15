@@ -1,5 +1,12 @@
+import logging
 import sys
 import os
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s — %(levelname)s — %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logging.info("🔥 Logging initialized in learn.py")
 def is_colab():
     try:
         import google.colab
@@ -22,17 +29,17 @@ physical_devices = tf.config.list_physical_devices('GPU')
 for gpu in physical_devices:
     try:
         tf.config.set_memory_growth(gpu, True)
-        print(f"✅ Enabled memory growth for GPU: {gpu}")
+        logging.info(f"✅ Enabled memory growth for GPU: {gpu}")
         sys.stdout.flush()
         sys.stderr.flush()
     except Exception as e:
-        print(f"⚠️ Could not enable memory growth for {gpu}: {e}")
+        logging.warning(f"⚠️ Could not enable memory growth for {gpu}: {e}")
         sys.stdout.flush()
         sys.stderr.flush()
 
 # Set PyTorch default device and tensor type
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"🖥️ Running on device: {device}")
+logging.info(f"🖥️ Running on device: {device}")
 sys.stdout.flush()
 sys.stderr.flush()
 # Avoid global default override, let each tensor use `.to(device)`
@@ -48,13 +55,13 @@ from telegram_utils import send_telegram_message
 # Helper to escape unsafe Markdown for Telegram
 def safe_send_telegram(msg):
     if not msg.strip():
-        print("⚠️ Skipping empty Telegram message.")
+        logging.warning("⚠️ Skipping empty Telegram message.")
         return
     try:
         safe_msg = msg.replace("*", "\\*").replace("_", "\\_").replace("[", "\\[").replace("]", "\\]")
         send_telegram_message(safe_msg)
     except Exception as e:
-        print("⚠️ Telegram failed:", e)
+        logging.warning(f"⚠️ Telegram failed: {e}")
 
 def format_duration(seconds):
     mins, secs = divmod(int(seconds), 60)
@@ -65,7 +72,7 @@ from model import ChessNet
 from self_play import self_play
 from train import train_model
 
-print("✅ Script loaded.", flush=True)
+logging.info("✅ Script loaded.")
 sys.stdout.flush()
 sys.stderr.flush()
 
@@ -84,21 +91,21 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 sys.excepthook = lambda exc_type, exc_value, exc_traceback: \
-    print("Uncaught exception:", ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback)), flush=True)
+    logging.error("Uncaught exception: %s", ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
 
 
 def load_or_initialize_model(model_path):
     model = ChessNet()
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))
-        logger.info("✅ Loaded existing model.")
+        logging.info("✅ Loaded existing model.")
         sys.stdout.flush()
         sys.stderr.flush()
     else:
-        logger.info("🆕 Initialized new model.")
+        logging.info("🆕 Initialized new model.")
         sys.stdout.flush()
         sys.stderr.flush()
-    print("[DEBUG] Model loaded and returned")
+    logging.info("[DEBUG] Model loaded and returned")
     sys.stdout.flush()
     return model
 
@@ -130,7 +137,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     # Save initial model backup
     initial_model_path = os.path.join(CHECKPOINT_DIR, "initial_model.pth")
     torch.save(model.state_dict(), initial_model_path)
-    print("💾 Initial model checkpoint saved.")
+    logging.info("💾 Initial model checkpoint saved.")
     sys.stdout.flush()
     sys.stderr.flush()
     send_telegram_message("💾 Initial model checkpoint saved.")
@@ -161,10 +168,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         os.makedirs(CHECKPOINT_DIR)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    print(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
+    logging.info(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
     sys.stdout.flush()
     sys.stderr.flush()
-    print("🤖 Starting KnightVision RL — token and chat ID loaded successfully.")
+    logging.info("🤖 Starting KnightVision RL — token and chat ID loaded successfully.")
     sys.stdout.flush()
     sys.stderr.flush()
     try:
@@ -178,40 +185,42 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             send_telegram_message(msg_iter)
         except Exception as e:
             print(f"⚠️ Telegram failed: {e}")
-        print("📨 Sent message:", msg_iter)
-        print(f"🌀 Iteration {i+1}/{iterations} started...", flush=True)
-        print(f"[INFO] Starting self-play iteration {i+1} of {iterations}")
+        logging.info("📨 Sent message: %s", msg_iter)
+        logging.info(f"🌀 Iteration {i+1}/{iterations} started...")
         sys.stdout.flush()
-        logger.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
+        logging.info(f"[INFO] Starting self-play iteration {i+1} of {iterations}")
+        sys.stdout.flush()
+        sys.stderr.flush()
+        logging.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
         sys.stdout.flush()
         sys.stderr.flush()
         try:
-            print("📣 Entering self_play()...")
+            logging.info("📣 Entering self_play()...")
             sys.stdout.flush()
             sys.stderr.flush()
             msg_selfplay_enter = "📣 Entering self_play()..."
             try:
                 send_telegram_message(msg_selfplay_enter)
             except Exception as e:
-                print(f"⚠️ Telegram failed: {e}")
-            print("📨 Sent message:", msg_selfplay_enter)
-            print("🧪 ENTERING SELF_PLAY FUNCTION", flush=True)
-            print("[DEBUG] self_play() called with model and num_games =", games_per_iter)
+                logging.warning(f"⚠️ Telegram failed: {e}")
+            logging.info("📨 Sent message: %s", msg_selfplay_enter)
+            logging.info("🧪 ENTERING SELF_PLAY FUNCTION")
+            logging.info("[DEBUG] self_play() called with model and num_games = %s", games_per_iter)
             sys.stdout.flush()
             msg_log_selfplay = "🔍 LOG: ENTERING self_play()"
             try:
                 send_telegram_message(msg_log_selfplay)
             except Exception as e:
-                print(f"⚠️ Telegram failed: {e}")
-            print("📨 Sent message:", msg_log_selfplay)
+                logging.warning(f"⚠️ Telegram failed: {e}")
+            logging.info("📨 Sent message: %s", msg_log_selfplay)
             selfplay_data = self_play(model, num_games=games_per_iter)
-            print(f"[DEBUG] self_play() returned {len(selfplay_data)} samples")
+            sys.stdout.flush()
+            logging.info(f"[DEBUG] self_play() returned {len(selfplay_data)} samples")
             sys.stdout.flush()
             if selfplay_data:
-                print("[DEBUG] First sample from self_play:", selfplay_data[0])
+                logging.info("[DEBUG] First sample from self_play: %s", selfplay_data[0])
                 sys.stdout.flush()
-            # === DEBUG BLOCK: print number of samples ===
-            print(f"✅ Self-play returned {len(selfplay_data)} samples")
+            logging.info(f"✅ Self-play returned {len(selfplay_data)} samples")
             sys.stdout.flush()
             sys.stderr.flush()
             if len(selfplay_data) == 0:
@@ -219,43 +228,44 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 try:
                     send_telegram_message(msg_zero)
                 except Exception as e:
-                    print(f"⚠️ Telegram failed: {e}")
-                print("📨 Sent message:", msg_zero)
-            print(f"🧪 Generated {len(selfplay_data)} self-play games")
+                    logging.warning(f"⚠️ Telegram failed: {e}")
+                logging.info("📨 Sent message: %s", msg_zero)
+            logging.info(f"🧪 Generated {len(selfplay_data)} self-play games")
             sys.stdout.flush()
             sys.stderr.flush()
             if selfplay_data:
-                print("🔍 First self-play sample:", selfplay_data[0])
+                logging.info("🔍 First self-play sample: %s", selfplay_data[0])
                 sys.stdout.flush()
                 sys.stderr.flush()
-            logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
+            logging.info(f"🧠 Self-play generated {len(selfplay_data)} games")
             sys.stdout.flush()
             sys.stderr.flush()
             if len(selfplay_data) == 0:
-                logger.warning("⚠️ Self-play returned 0 games. This may indicate a bug.")
+                logging.warning("⚠️ Self-play returned 0 games. This may indicate a bug.")
                 sys.stdout.flush()
                 sys.stderr.flush()
                 msg_zero2 = "⚠️ Self-play returned 0 games. Please inspect the logic."
                 try:
                     send_telegram_message(msg_zero2)
                 except Exception as e:
-                    print(f"⚠️ Telegram failed: {e}")
-                print("📨 Sent message:", msg_zero2)
+                    logging.warning(f"⚠️ Telegram failed: {e}")
+                logging.info("📨 Sent message: %s", msg_zero2)
             else:
-                logger.info("✅ Self-play completed successfully.")
+                logging.info("✅ Self-play completed successfully.")
                 sys.stdout.flush()
                 sys.stderr.flush()
                 msg_selfplay_complete = f"♟️ Self-play complete — {len(selfplay_data)} games generated."
                 try:
                     send_telegram_message(msg_selfplay_complete)
                 except Exception as e:
-                    print(f"⚠️ Telegram failed: {e}")
-                print("📨 Sent message:", msg_selfplay_complete)
-                print("♟️ Self-play finished with", len(selfplay_data), "games.")
+                    logging.warning(f"⚠️ Telegram failed: {e}")
+                logging.info("📨 Sent message: %s", msg_selfplay_complete)
+                logging.info("♟️ Self-play finished with %d games.", len(selfplay_data))
                 # Optionally print first game
-                logger.debug(f"🔍 Sample self-play game: {selfplay_data[0]}")
+                logging.debug(f"🔍 Sample self-play game: {selfplay_data[0]}")
                 sys.stdout.flush()
                 sys.stderr.flush()
+            sys.stdout.flush()
         except Exception as e:
             error_details = traceback.format_exc()
             logger.error(f"🔥 Self-play crashed: {e}\n{error_details}")
@@ -276,7 +286,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             if f.startswith("games_part_") and f.endswith(".jsonl")
         ])
 
-        logger.info(f"🧩 Total human batches: {len(batch_files)}")
+        logging.info(f"🧩 Total human batches: {len(batch_files)}")
         sys.stdout.flush()
         sys.stderr.flush()
 
@@ -285,7 +295,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             tf_logs = tf.summary.create_file_writer(log_dir)
             send_telegram_message(f"🧠 Starting training on batch file: {os.path.basename(batch_path)} (Step {global_step})")
             send_telegram_message("🚀 Beginning data loading and collation...")
-            logger.info(f"📥 Loading human data from {batch_path}")
+            logging.info(f"📥 Loading human data from {batch_path}")
             sys.stdout.flush()
             sys.stderr.flush()
             with open(batch_path, "r") as f:
@@ -298,11 +308,11 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 pynvml.nvmlInit()
                 handle = pynvml.nvmlDeviceGetHandleByIndex(0)
                 info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                logger.info(f"🧠 GPU Mem before training: {info.used / 1e6:.2f} MB used")
+                logging.info(f"🧠 GPU Mem before training: {info.used / 1e6:.2f} MB used")
                 sys.stdout.flush()
                 sys.stderr.flush()
             except Exception as e:
-                logger.warning(f"⚠️ GPU monitoring failed: {e}")
+                logging.warning(f"⚠️ GPU monitoring failed: {e}")
                 sys.stdout.flush()
                 sys.stderr.flush()
 
@@ -314,23 +324,25 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 device='cuda' if torch.cuda.is_available() else 'cpu',
                 pin_memory=False
             )
+            sys.stdout.flush()
             avg_loss = sum(result['losses']) / len(result['losses'])
-            print(f"📤 Training step {global_step} complete. Avg Loss: {avg_loss:.5f}")
+            logging.info(f"📤 Training step {global_step} complete. Avg Loss: {avg_loss:.5f}")
             sys.stdout.flush()
             sys.stderr.flush()
             msg_train_complete = f"📤 Training step {global_step} complete. Avg Loss: {avg_loss:.5f}"
             try:
                 send_telegram_message(msg_train_complete)
             except Exception as e:
-                print(f"⚠️ Telegram failed: {e}")
-            print("📨 Sent message:", msg_train_complete)
+                logging.warning(f"⚠️ Telegram failed: {e}")
+            logging.info("📨 Sent message: %s", msg_train_complete)
+            logging.info("✅ Training step completed successfully.")
 
             # --- Training score calculation and logging ---
             accuracy = result.get("accuracy", 0.0)
             reward = result.get("avg_reward", 0.0)
             score = (1 - avg_loss) * 50 + accuracy * 30 + reward * 20
             writer.add_scalar("Training/Score", score, global_step)
-            print(f"📈 Score: {score:.2f}/100")
+            logging.info(f"📈 Score: {score:.2f}/100")
             sys.stdout.flush()
             sys.stderr.flush()
 
@@ -347,21 +359,34 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
             ckpt_path = os.path.join(checkpoint_dir, f"model_step_{global_step}.pth")
             torch.save(model.state_dict(), ckpt_path)
+            # Notify after checkpoint save
+            try:
+                send_telegram_message(f"💾 Model checkpoint saved to: {ckpt_path}")
+            except Exception as e:
+                logging.warning(f"⚠️ Telegram failed to notify checkpoint save: {e}")
             msg_ckpt = f"💾 Model checkpoint saved at step {global_step}"
             try:
                 send_telegram_message(msg_ckpt)
             except Exception as e:
-                print(f"⚠️ Telegram failed: {e}")
-            print("📨 Sent message:", msg_ckpt)
+                logging.warning(f"⚠️ Telegram failed: {e}")
+            logging.info("📨 Sent message: %s", msg_ckpt)
+            logging.info("✅ Checkpoint save completed successfully.")
             # Periodic autosave to backup file
             if global_step % 2 == 0:
-                torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "autosave_model.pth"))
+                autosave_path = os.path.join(CHECKPOINT_DIR, "autosave_model.pth")
+                torch.save(model.state_dict(), autosave_path)
+                # Notify after autosave
+                try:
+                    send_telegram_message("💾 Autosave checkpoint saved to main directory.")
+                except Exception as e:
+                    print(f"⚠️ Telegram failed to notify autosave: {e}")
                 msg_autosave = "💾 Autosave model checkpoint saved."
                 try:
                     send_telegram_message(msg_autosave)
                 except Exception as e:
                     print(f"⚠️ Telegram failed: {e}")
-                print("📨 Sent message:", msg_autosave)
+                logging.info("📨 Sent message: %s", msg_autosave)
+                logging.info("✅ Autosave completed successfully.")
             with open(os.path.join(checkpoint_dir, f"model_step_{global_step}.txt"), 'w') as ts_file:
                 ts_file.write(f"Checkpoint saved at step {global_step}")
             torch.save(model.state_dict(), drive_checkpoint_path)
@@ -395,27 +420,28 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 f"🕒 *Step Time:* {format_duration(batch_time)}\n"
                 f"💾 *RAM Used:* {mem_used:.2f} MB\n"
             )
-            print("📨 Telegram message preview:\n", telegram_msg)
+            logging.info("📨 Telegram message preview:\n%s", telegram_msg)
             sys.stdout.flush()
             sys.stderr.flush()
 
             try:
                 send_telegram_message(telegram_msg)
             except Exception as e:
-                print(f"⚠️ Telegram failed: {e}")
-            print("📨 Sent message:", telegram_msg)
+                logging.warning(f"⚠️ Telegram failed: {e}")
+            logging.info("📨 Sent message: %s", telegram_msg)
             msg_completed = f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}"
             try:
                 send_telegram_message(msg_completed)
             except Exception as e:
-                print(f"⚠️ Telegram failed: {e}")
-            print("📨 Sent message:", msg_completed)
+                logging.warning(f"⚠️ Telegram failed: {e}")
+            logging.info("📨 Sent message: %s", msg_completed)
             msg_uploaded = f"📤 Uploaded model checkpoint for step {global_step}. Ready for next batch."
             try:
                 send_telegram_message(msg_uploaded)
             except Exception as e:
-                print(f"⚠️ Telegram failed: {e}")
-            print("📨 Sent message:", msg_uploaded)
+                logging.warning(f"⚠️ Telegram failed: {e}")
+            logging.info("📨 Sent message: %s", msg_uploaded)
+            logging.info("✅ Batch upload and summary completed successfully.")
             # --- Progress alert every step ---
             notify_every = 1
             if global_step % notify_every == 0:
@@ -424,10 +450,11 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                     send_telegram_message(msg_progress)
                 except Exception as e:
                     print(f"⚠️ Telegram failed: {e}")
-                print("📨 Sent message:", msg_progress)
+                logging.info("📨 Sent message: %s", msg_progress)
+                logging.info("✅ Progress ping completed successfully.")
             # --- End Telegram notification block ---
 
-            logger.info(f"⏱️ Batch time: {format_duration(batch_time)} | RAM Used: {mem_used:.2f} MB")
+            logging.info(f"⏱️ Batch time: {format_duration(batch_time)} | RAM Used: {mem_used:.2f} MB")
             sys.stdout.flush()
             sys.stderr.flush()
             gc.collect()
@@ -435,9 +462,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         torch.save(model.state_dict(), model_path)
         with open(os.path.join(checkpoint_dir, f"model_step_{global_step}.txt"), 'w') as ts_file:
             ts_file.write(f"Checkpoint saved at step {global_step}")
-        logger.info(f"📦 Model saved after iteration {i+1}")
+        logging.info(f"📦 Model saved after iteration {i+1}")
         sys.stdout.flush()
         sys.stderr.flush()
+        logging.info("✅ Model save after iteration completed successfully.")
 
     # Save top checkpoints
     checkpoints_meta.sort(key=lambda x: x[1])  # sort by lowest loss
@@ -458,21 +486,21 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             os.remove(path)
 
     writer.close()
-    print("🏁 Reinforcement training loop has finished.")
+    logging.info("🏁 Reinforcement training loop has finished.")
     sys.stdout.flush()
     sys.stderr.flush()
     msg_rl_finished = "🏁 Reinforcement training loop has finished."
     try:
         send_telegram_message(msg_rl_finished)
     except Exception as e:
-        print(f"⚠️ Telegram failed: {e}")
-    print("📨 Sent message:", msg_rl_finished)
+        logging.warning(f"⚠️ Telegram failed: {e}")
+    logging.info("📨 Sent message: %s", msg_rl_finished)
     msg_final_ckpt = "🧠 Final model checkpoint saved to Drive."
     try:
         send_telegram_message(msg_final_ckpt)
     except Exception as e:
-        print(f"⚠️ Telegram failed: {e}")
-    print("📨 Sent message:", msg_final_ckpt)
+        logging.warning(f"⚠️ Telegram failed: {e}")
+    logging.info("📨 Sent message: %s", msg_final_ckpt)
     total_duration = time.time() - total_start
     with open(os.path.join(BASE_DIR, "last_training_summary.txt"), 'w') as f:
         f.write(f"Training completed in {format_duration(total_duration)}\nBest steps: {best_steps}")
@@ -480,12 +508,12 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         try:
             send_telegram_message(msg_summary)
         except Exception as e:
-            print(f"⚠️ Telegram failed: {e}")
-        print("📨 Sent message:", msg_summary)
+            logging.warning(f"⚠️ Telegram failed: {e}")
+        logging.info("📨 Sent message: %s", msg_summary)
     # Backup final model
     torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "final_model.pth"))
-    logger.info(f"🕒 Total training time: {format_duration(total_duration)}")
-    logger.info("✅ Reinforcement learning complete.")
+    logging.info(f"🕒 Total training time: {format_duration(total_duration)}")
+    logging.info("✅ Reinforcement learning complete.")
     sys.stdout.flush()
     sys.stderr.flush()
 
@@ -496,20 +524,20 @@ except RuntimeError:
     pass
 
 if __name__ == "__main__":
-    logger.info("🎯 Starting full reinforcement training loop")
+    logging.info("🎯 Starting full reinforcement training loop")
     sys.stdout.flush()
     sys.stderr.flush()
     msg_enter_rl = "🔄 Entering reinforcement loop..."
     try:
         send_telegram_message(msg_enter_rl)
     except Exception as e:
-        print(f"⚠️ Telegram failed: {e}")
-    print("📨 Sent message:", msg_enter_rl)
+        logging.warning(f"⚠️ Telegram failed: {e}")
+    logging.info("📨 Sent message: %s", msg_enter_rl)
     try:
         reinforcement_loop(iterations=3, games_per_iter=5, epochs=2)
     except Exception as e:
         error_msg = f"🔥 Training crashed with error:\n{e}\n{traceback.format_exc()}"
-        logger.error(error_msg)
+        logging.error(error_msg)
         sys.stdout.flush()
         sys.stderr.flush()
         send_telegram_message(error_msg)
