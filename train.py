@@ -143,7 +143,7 @@ if len(dataset) == 0:
 print("✅ DataLoader initialized")
                 
 
-def train_model(model, data, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
+def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
@@ -352,7 +352,7 @@ def capture_and_train():
     buffer = io.StringIO()
     try:
         with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
-            result = train_model(model, dataloader, optimizer, start_epoch=start_epoch, epochs=10000, lr=1e-3)
+            result = train_model(model, dataloader, optimizer, start_epoch=start_epoch, epochs=10000, batch_size=2048, device=device)
     except Exception as e:
         msg = f"❌ Training failed: {e}"
         print(msg)

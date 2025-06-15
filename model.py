@@ -34,6 +34,7 @@ class ChessNet(nn.Module):
         self.value_fc2 = nn.Linear(512, 1)
 
     def forward(self, x):
+        print("📥 Forward input shape:", x.shape)
         with amp.autocast(device_type='cuda', dtype=torch.float16):
             x = torch.relu(self.bn1(self.conv1(x)))
             x = torch.relu(self.bn2(self.conv2(x)))
@@ -47,10 +48,12 @@ class ChessNet(nn.Module):
             policy = torch.relu(self.policy_bn(self.policy_conv(x)))
             policy = torch.flatten(policy, 1)
             policy = self.policy_fc(policy)
+            print("📤 Policy output shape:", policy.shape)
 
             value = torch.relu(self.value_bn(self.value_conv(x)))
             value = value.view(value.size(0), -1)
             value = torch.relu(self.value_fc1(value))
             value = torch.tanh(self.value_fc2(value))
+            print("📤 Value output shape:", value.shape)
 
         return policy.to(x.device), value.to(x.device)

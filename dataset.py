@@ -10,7 +10,7 @@ print(f"[DATASET] Base directory set to: {BASE_DIR}")
 
 import json
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 import chess
 import chess.pgn
 import numpy as np
