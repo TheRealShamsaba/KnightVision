@@ -101,6 +101,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
     model_path = os.path.join(checkpoint_dir, "model.pth")
     model = load_or_initialize_model(model_path)
+    send_telegram_message("📦 Model loaded and ready. Beginning reinforcement loop...")
 
     # Save initial model backup
     initial_model_path = os.path.join(CHECKPOINT_DIR, "initial_model.pth")
@@ -190,6 +191,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 pin_memory=False
             )
             avg_loss = sum(result['losses']) / len(result['losses'])
+            send_telegram_message(f"📤 Training step {global_step} complete. Avg Loss: {avg_loss:.5f}")
 
             # --- Training score calculation and logging ---
             accuracy = result.get("accuracy", 0.0)
@@ -211,6 +213,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
             ckpt_path = os.path.join(checkpoint_dir, f"model_step_{global_step}.pth")
             torch.save(model.state_dict(), ckpt_path)
+            send_telegram_message(f"💾 Model checkpoint saved at step {global_step}")
             # Periodic autosave to backup file
             if global_step % 2 == 0:
                 torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "autosave_model.pth"))
@@ -242,17 +245,11 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             mem_used = psutil.Process(os.getpid()).memory_info().rss / 1e6  # in MB
 
             telegram_msg = (
-                f"♟️ *KnightVision Training Report — Step {global_step}*\n"
-                f"🏋️‍♂️ *Games Played:* {len(selfplay_data)} self-play | {len(human_data)} human\n"
-                f"🧠 *Avg Loss:* `{avg_loss:.5f}` | 📉 Getting sharper!\n"
-                f"🚀 *Step Time:* {format_duration(batch_time)}\n"
+                f"📈 *KnightVision TF Log Update — Step {global_step}*\n"
+                f"🧠 *Avg Loss:* `{avg_loss:.5f}`\n"
+                f"📊 *TF Scalars Logged:* {total_scalars}\n"
+                f"🕒 *Step Time:* {format_duration(batch_time)}\n"
                 f"💾 *RAM Used:* {mem_used:.2f} MB\n"
-                f"📈 *TF Scalars Logged:* {total_scalars}\n"
-                f"📦 *Model Saved:* Step_{global_step}.pth ✅\n\n"
-                f"🧪 *Experiment:* Iteration {i+1}/{iterations}\n"
-                f"🔥 Training with love, neurons, and caffeinated weights.\n"
-                f"🧬 Stay tuned, the brain is evolving... 👾\n\n"
-                + random.choice(fun_endings)
             )
             print("📨 Telegram message preview:\n", telegram_msg)
 
@@ -293,12 +290,12 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
     writer.close()
     send_telegram_message("🏁 Reinforcement training loop has finished.")
+    send_telegram_message("🧠 Final model checkpoint saved to Drive.")
     total_duration = time.time() - total_start
     with open(os.path.join(BASE_DIR, "last_training_summary.txt"), 'w') as f:
         f.write(f"Training completed in {format_duration(total_duration)}\nBest steps: {best_steps}")
     # Backup final model
     torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "final_model.pth"))
-    send_telegram_message("🧠 Final model checkpoint saved to Drive.")
     logger.info(f"🕒 Total training time: {format_duration(total_duration)}")
     logger.info("✅ Reinforcement learning complete.")
 
