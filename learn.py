@@ -489,22 +489,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     sys.stderr.flush()
 
 # --- Main entry point for training ---
+from google.colab import drive
+drive.mount('/content/drive', force_remount=True)
+
 if __name__ == '__main__':
-    mp.set_start_method("spawn", force=True)
-    logger.info("🎯 Starting full reinforcement training loop")
-    sys.stdout.flush()
-    sys.stderr.flush()
-    msg_enter_rl = "🔄 Entering reinforcement loop..."
-    try:
-        send_telegram_message(msg_enter_rl)
-    except Exception as e:
-        print(f"⚠️ Telegram failed: {e}")
-    print("📨 Sent message:", msg_enter_rl)
-    try:
-        reinforcement_loop(iterations=3, games_per_iter=5, epochs=2)
-    except Exception as e:
-        error_msg = f"🔥 Training crashed with error:\n{e}\n{traceback.format_exc()}"
-        logger.error(error_msg)
-        sys.stdout.flush()
-        sys.stderr.flush()
-        send_telegram_message(error_msg)
+    import torch.multiprocessing as mp
+    mp.set_start_method('spawn', force=True)
+    main()
