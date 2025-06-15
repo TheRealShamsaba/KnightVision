@@ -1,5 +1,7 @@
 import os
 import requests
+from dotenv import load_dotenv
+load_dotenv('/content/drive/MyDrive/KnightVision/.env')
 
 def send_telegram_message(message, parse_mode="Markdown"):
     """
@@ -27,6 +29,7 @@ def send_telegram_message(message, parse_mode="Markdown"):
     try:
         response = requests.post(url, json=payload)
         response.raise_for_status()
+        print("✅ Telegram API response:", response.json())
     except requests.exceptions.RequestException as e:
         print(f"❌ Failed to send Telegram message: {e}")
 
@@ -36,7 +39,21 @@ def send_game_report(game_number, result, moves):
     """
     Sends a formatted message to Telegram with self-play game results.
     """
+    if not result or not moves:
+        print(f"⚠️ Skipping game report for Game {game_number} — missing result or moves")
+        return
+
+    result = str(result)
+
     message = f"♟️ *Self-Play Game {game_number}* Completed\n"
     message += f"Result: *{result}*\n"
+    if len(moves) > 300:
+        moves = moves[:300] + "... (truncated)"
     message += f"Moves: `{moves}`"
+
+    if not message.strip():
+        print(f"⚠️ Skipping Telegram game report for Game {game_number} — message is empty")
+        return
+
+    print("📤 Telegram game report:", message)  # Colab logging
     send_telegram_message(message)

@@ -3,6 +3,7 @@ import os
 import time
 from telegram_utils import send_telegram_message
 print("Self-play script loaded...")
+print("✅ Telegram test message dispatched.")
 
 try:
     send_telegram_message("📥 self_play.py loaded successfully.")
@@ -47,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 def self_play(model, num_games=100):
+    print("✅ self_play() function has started executing", flush=True)
     data = []
     model.eval()
     model.to(device)
@@ -55,16 +57,20 @@ def self_play(model, num_games=100):
     except Exception as e:
         print(f"⚠️ Telegram send failed: {e}")
     print(f"Starting self-play with {num_games} games...")
+    print("🧪 Self-play loop entered")
     try:
         send_telegram_message(f"🎮 Confirmed: Self-play function is running with {num_games} games.")
     except Exception as e:
         print(f"⚠️ Telegram send failed: {e}")
     for _ in range(num_games):
+        print(f"🕹️ Starting game {_ + 1}/{num_games}")
+        print("⏳ Game initialization complete — entering move loop", flush=True)
         gs = GameState()
         game_data = []
 
         for _ in range(100):  # max moves per game
             valid_moves = gs.getValidMoves()
+            print(f"♟️ Valid moves count: {len(valid_moves)}")
             if not valid_moves:
                 break
 
@@ -122,13 +128,16 @@ def self_play(model, num_games=100):
             except Exception as e:
                 print(f"⚠️ Telegram send failed: {e}")
         print(f"🧠 RAM usage: {psutil.virtual_memory().percent}%")
+        print(f"✅ Game {_ + 1} complete. Moves played: {len(game_data)} | Outcome: {outcome}", flush=True)
         if torch.cuda.is_available():
             print(f"💾 VRAM: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
 
+    print(f"📊 Total samples generated: {len(data)}")
     try:
         send_telegram_message(f"✅ Self-play completed. {len(data)} samples generated.")
     except Exception as e:
         print(f"⚠️ Telegram send failed: {e}")
+    print(f"🧪 self_play() function execution finished. Total samples: {len(data)}", flush=True)
     return data
 
 
@@ -144,6 +153,7 @@ if __name__ == "__main__":
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
     model.load_state_dict(torch.load(model_path, map_location=device))
+    print("✅ Model loaded successfully — starting self_play()", flush=True)
     try:
         send_telegram_message("📦 Self-play started from __main__ with loaded model.")
     except Exception as e:
@@ -151,4 +161,5 @@ if __name__ == "__main__":
     model.to(device)
     print(f"✅ Loaded model from {model_path}")
     data = self_play(model, num_games=50)
+    print("🧪 self_play() execution finished.")
     logger.info("Generated %s samples from self-play", len(data))

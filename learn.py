@@ -95,6 +95,8 @@ def load_or_initialize_model(model_path):
         logger.info("🆕 Initialized new model.")
         sys.stdout.flush()
         sys.stderr.flush()
+    print("[DEBUG] Model loaded and returned")
+    sys.stdout.flush()
     return model
 
 def stream_human_data(file_path=os.path.join(DATA_DIR, "games.jsonl"), chunk_size=64, max_lines=1_000_000):
@@ -125,6 +127,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     # Save initial model backup
     initial_model_path = os.path.join(CHECKPOINT_DIR, "initial_model.pth")
     torch.save(model.state_dict(), initial_model_path)
+    print("💾 Initial model checkpoint saved.")
+    sys.stdout.flush()
+    sys.stderr.flush()
     send_telegram_message("💾 Initial model checkpoint saved.")
 
     writer = SummaryWriter(log_dir)
@@ -156,19 +161,34 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     print(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
     sys.stdout.flush()
     sys.stderr.flush()
+    print("🤖 Starting KnightVision RL — token and chat ID loaded successfully.")
+    sys.stdout.flush()
+    sys.stderr.flush()
     send_telegram_message("🤖 Starting KnightVision RL — token and chat ID loaded successfully.")
 
     for i in range(iterations):
         send_telegram_message(f"🌀 Iteration {i+1}/{iterations} started...")
         print(f"🌀 Iteration {i+1}/{iterations} started...", flush=True)
+        print(f"[INFO] Starting self-play iteration {i+1} of {iterations}")
+        sys.stdout.flush()
         logger.info(f"🚀 Iteration {i+1}/{iterations} - Generating self-play data")
         sys.stdout.flush()
         sys.stderr.flush()
         try:
+            print("📣 Entering self_play()...")
+            sys.stdout.flush()
+            sys.stderr.flush()
             send_telegram_message("📣 Entering self_play()...")
             print("🧪 ENTERING SELF_PLAY FUNCTION", flush=True)
+            print("[DEBUG] self_play() called with model and num_games =", games_per_iter)
+            sys.stdout.flush()
             send_telegram_message("🔍 LOG: ENTERING self_play()")
             selfplay_data = self_play(model, num_games=games_per_iter)
+            print(f"[DEBUG] self_play() returned {len(selfplay_data)} samples")
+            sys.stdout.flush()
+            if selfplay_data:
+                print("[DEBUG] First sample from self_play:", selfplay_data[0])
+                sys.stdout.flush()
             # === DEBUG BLOCK: print number of samples ===
             print(f"✅ Self-play returned {len(selfplay_data)} samples")
             sys.stdout.flush()
@@ -252,6 +272,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 pin_memory=False
             )
             avg_loss = sum(result['losses']) / len(result['losses'])
+            print(f"📤 Training step {global_step} complete. Avg Loss: {avg_loss:.5f}")
+            sys.stdout.flush()
+            sys.stderr.flush()
             send_telegram_message(f"📤 Training step {global_step} complete. Avg Loss: {avg_loss:.5f}")
 
             # --- Training score calculation and logging ---
@@ -358,6 +381,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
             os.remove(path)
 
     writer.close()
+    print("🏁 Reinforcement training loop has finished.")
+    sys.stdout.flush()
+    sys.stderr.flush()
     send_telegram_message("🏁 Reinforcement training loop has finished.")
     send_telegram_message("🧠 Final model checkpoint saved to Drive.")
     total_duration = time.time() - total_start

@@ -116,15 +116,20 @@ if not os.path.isfile(games_path) or os.path.getsize(games_path) == 0:
     msg = f"❌ Dataset file not found or empty: {games_path}"
     print(msg)
     send_telegram_message(msg)
+    print("✅ Telegram message sent.")
     sys.exit(1)
 model = ChessNet()
+print("✅ Model initialized")
 dataset = ChessPGNDataset(games_path, max_samples=1000000)
+print(f"✅ Dataset instantiated: {len(dataset)} samples")
 if len(dataset) == 0:
     msg = f"❌ Dataset loaded but contains 0 samples: {games_path}"
     print(msg)
     send_telegram_message(msg)
+    print("✅ Telegram message sent.")
     sys.exit(1)
 dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=False, num_workers=0)
+print("✅ DataLoader initialized")
                 
 
 def train_model(model, dataloader, epochs=10000, lr=1e-3):
@@ -143,6 +148,8 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     message = "✅ train.py started training..."
     print("⚠️ Attempting to send message:", message)
     send_telegram_message(message)
+    print("✅ Telegram message sent.")
+    print("✅ Starting epoch loop...")
 
     for epoch in range(epochs):
         if (epoch + 1) % 10 == 0:
@@ -156,6 +163,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             message = f"📦 train.py checkpoint saved — Epoch {epoch+1}"
             print("⚠️ Attempting to send message:", message)
             send_telegram_message(message)
+            print("✅ Telegram message sent.")
         total_loss = 0
         total_reward = 0
 
@@ -168,6 +176,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
         for i in range(len(dataloader)):
             try:
                 boards_np, moves, outcomes = next(dataloader_iter)
+                print(f"🔁 Processing batch {i+1}/{len(dataloader)}")
             except Exception as e:
                 print(f"⚠️ Data loading error: {e}")
                 continue
@@ -203,6 +212,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             message = f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}"
             print("⚠️ Attempting to send message:", message)
             send_telegram_message(message)
+            print("✅ Telegram message sent.")
 
             optimizer.zero_grad()
             loss.backward()
@@ -245,6 +255,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
             message = f"📊 train.py progress — Epoch {epoch+1}: Score {score:.2f}"
             print("⚠️ Attempting to send message:", message)
             send_telegram_message(message)
+            print("✅ Telegram message sent.")
 
         all_losses.append(total_loss)
         all_rewards.append(total_reward / len(dataloader.dataset))
@@ -275,6 +286,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     message = "🏁 *train.py finished training.*\nAll epochs completed successfully. Check TensorBoard for metrics and the checkpoints folder for saved models."
     print("⚠️ Attempting to send message:", message)
     send_telegram_message(message)
+    print("✅ Telegram message sent.")
     return {
         "losses": all_losses,
         "rewards": all_rewards,
@@ -303,6 +315,7 @@ def send_telegram_message(message):
 
 # Send notification that training started
 send_telegram_message("🚀 Training started...")
+print("✅ Telegram message sent.")
 print(f"✅ Telegram configured: TOKEN is {'set' if telegram_token else 'missing'}, CHAT_ID is {'set' if telegram_chat_id else 'missing'}")
 
 
@@ -318,6 +331,7 @@ def capture_and_train():
         msg = f"❌ Training failed: {e}"
         print(msg)
         send_telegram_message(msg)
+        print("✅ Telegram message sent.")
         return
     output = buffer.getvalue()
     # Send a short summary first, then detailed output in chunks
@@ -333,10 +347,12 @@ def capture_and_train():
     else:
         summary = "✅ Training completed. Check logs for details."
     send_telegram_message(summary)
+    print("✅ Telegram message sent.")
     # Send output in chunks to avoid Telegram message size limits
     for i in range(0, len(output), 4000):
         chunk = output[i:i+4000]
         send_telegram_message(f"🧾 *Captured Training Output* (part {i//4000 + 1}):\n```{chunk}```")
+        print("✅ Telegram message sent.")
 
 # Call the new function instead of direct train_model
 capture_and_train()
