@@ -619,6 +619,33 @@ class GameState():
 
         return False, False, False, False  # No end condition
 
+    def getFEN(self):
+        """
+        Generate a FEN string from the current board state.
+        """
+        fen_rows = []
+        for row in self.board:
+            fen_row = ""
+            empty = 0
+            for square in row:
+                if square == "--":
+                    empty += 1
+                else:
+                    if empty > 0:
+                        fen_row += str(empty)
+                        empty = 0
+                    piece = square[1]
+                    if square[0] == 'w':
+                        fen_row += piece.upper()
+                    else:
+                        fen_row += piece.lower()
+            if empty > 0:
+                fen_row += str(empty)
+            fen_rows.append(fen_row)
+        fen_board = "/".join(fen_rows)
+        fen_turn = 'w' if self.whiteToMove else 'b'
+        return f"{fen_board} {fen_turn}"
+
 class Move():
     # maps keys in values
     # key : value
