@@ -1,12 +1,6 @@
-import sys
 import os
+import sys
 import multiprocessing as mp
-def is_colab():
-    try:
-        import google.colab
-        return True
-    except ImportError:
-        return False
 import json
 import torch
 from datetime import datetime
@@ -30,6 +24,10 @@ for gpu in physical_devices:
         print(f"⚠️ Could not enable memory growth for {gpu}: {e}")
         sys.stdout.flush()
         sys.stderr.flush()
+
+# === Google Colab Drive Mount ===
+from google.colab import drive
+drive.mount('/content/drive', force_remount=True)
 
 # Set PyTorch default device and tensor type
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -70,9 +68,6 @@ print("✅ Script loaded.", flush=True)
 sys.stdout.flush()
 sys.stderr.flush()
 
-# === SETUP ===
-from google.colab import drive
-drive.mount('/content/drive', force_remount=True)
 BASE_DIR = "/content/drive/MyDrive/KnightVision"
 
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
@@ -489,9 +484,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     sys.stderr.flush()
 
 # --- Main entry point for training ---
-from google.colab import drive
-drive.mount('/content/drive', force_remount=True)
-
 if __name__ == '__main__':
     import torch.multiprocessing as mp
     mp.set_start_method('spawn', force=True)
