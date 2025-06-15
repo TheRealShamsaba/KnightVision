@@ -64,6 +64,11 @@ class GameState():
         self.boardHistory = []
         self.halfMoveClock = 0  # for 50-move rule
         self.positionCount = {}  # for threefold repetition
+        # New draw detection
+        self.positionCounts = {}
+        self.halfMoveClock = 0
+        self.draw50 = False
+        self.drawRepetition = False
     def loadFEN(self, fen):
         parts = fen.split()
         board_part = parts[0]
@@ -151,12 +156,15 @@ class GameState():
             self.enPassantPossible = ()
 
         self.moveLog.append(move)  # log the game
-        # Update halfMoveClock for 50-move rule
-        if move.pieceCaptured or move.pieceMoved.lower() == 'p':
+        # Update half-move clock for 50-move rule
+        if move.pieceCaptured or move.pieceMoved[1] == 'P':
             self.halfMoveClock = 0
         else:
             self.halfMoveClock += 1
-        # Store current board position for threefold repetition
+        # Update repetition tracking
+        board_hash = self.hashBoard()
+        self.positionCounts[board_hash] = self.positionCounts.get(board_hash, 0) + 1
+        # Store current board position for threefold repetition (legacy)
         board_string = str(self.board)
         self.boardHistory.append(board_string)
         self.positionCount[board_string] = self.positionCount.get(board_string, 0) + 1
@@ -276,8 +284,8 @@ class GameState():
         else:
             moves = self.getAllPossibleMoves(pins)
 
-        # Check for checkmate/stalemate
-        self.checkMate, self.staleMate = self.checkForEndConditions(moves)
+        # Check for checkmate/stalemate/50-move/3-fold
+        self.checkMate, self.staleMate, self.draw50, self.drawRepetition = self.checkForEndConditions(moves)
         return moves
                     
                 
@@ -642,13 +650,27 @@ class Move():
 
     # Load a position from a FEN string
     
-    def checkForEndConditions(self, validMoves):
-        if len(validMoves) == 0:
+    def checkForEndConditions(self, moves):
+        # Checkmate and stalemate logic
+        if len(moves) == 0:
             if self.inCheck():
-                return True, False  # checkmate
+                return True, False, False, False  # checkmate
             else:
-                return False, True  # stalemate
-        return False, False
+                return False, True, False, False  # stalemate
+
+        # 50-move rule
+        if self.halfMoveClock >= 100:
+            return False, False, True, False  # 50-move draw
+
+        # 3-fold repetition
+        current_hash = self.hashBoard()
+        if self.positionCounts.get(current_hash, 0) >= 3:
+            return False, False, False, True  # 3-fold repetition draw
+
+        return False, False, False, False
+
+    def hashBoard(self):
+        return ''.join([''.join(row) for row in self.board]) + self.whiteToMove.__str__()
 
     def isDraw(self):
         # 50-move rule
