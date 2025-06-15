@@ -166,6 +166,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         sys.stderr.flush()
         try:
             send_telegram_message("📣 Entering self_play()...")
+            print("🧪 ENTERING SELF_PLAY FUNCTION", flush=True)
+            send_telegram_message("🔍 LOG: ENTERING self_play()")
             selfplay_data = self_play(model, num_games=games_per_iter)
             # === DEBUG BLOCK: print number of samples ===
             print(f"✅ Self-play returned {len(selfplay_data)} samples")
