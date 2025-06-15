@@ -135,6 +135,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     print("💾 Initial model checkpoint saved.")
     sys.stdout.flush()
     sys.stderr.flush()
+    # Ensure send_telegram_message is imported or defined above
+    # (Already imported at top of file)
     send_telegram_message("💾 Initial model checkpoint saved.")
 
     writer = SummaryWriter(log_dir)
