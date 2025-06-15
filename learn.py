@@ -27,6 +27,7 @@ for gpu in physical_devices:
 
 # Set PyTorch default device and tensor type
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"🖥️ Running on device: {device}")
 # Avoid global default override, let each tensor use `.to(device)`
 
 from dotenv import load_dotenv
@@ -119,6 +120,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
 
+    model_path = os.path.join(checkpoint_dir, "model.pth")
+    model = load_or_initialize_model(model_path)
+
     # Save initial model backup
     initial_model_path = os.path.join(CHECKPOINT_DIR, "initial_model.pth")
     torch.save(model.state_dict(), initial_model_path)
@@ -141,11 +145,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     cleanup_old_sessions()
 
     global_step = 0
-    model_path = os.path.join(checkpoint_dir, "model.pth")
     drive_checkpoint_path = os.path.join(CHECKPOINT_DIR, "model_latest.pth")
     checkpoints_meta = []
 
-    model = load_or_initialize_model(model_path)
     if not os.path.exists(CHECKPOINT_DIR):
         os.makedirs(CHECKPOINT_DIR)
     if not os.path.exists(log_dir):
@@ -261,21 +263,6 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 + random.choice(fun_endings)
             )
 
-            send_telegram_message(telegram_msg)
-            # Construct detailed telegram_msg as in train.py before sending the simple message
-            telegram_msg = (
-                f"♟️ *KnightVision Training Report — Step {global_step}*\n"
-                f"🏋️‍♂️ *Games Played:* {len(selfplay_data)} self-play | {len(human_data)} human\n"
-                f"🧠 *Avg Loss:* `{avg_loss:.5f}` | 📉 Getting sharper!\n"
-                f"🚀 *Step Time:* {format_duration(batch_time)}\n"
-                f"💾 *RAM Used:* {mem_used:.2f} MB\n"
-                f"📈 *TF Scalars Logged:* {total_scalars}\n"
-                f"📦 *Model Saved:* Step_{global_step}.pth ✅\n\n"
-                f"🧪 *Experiment:* Iteration {i+1}/{iterations}\n"
-                f"🔥 Training with love, neurons, and caffeinated weights.\n"
-                f"🧬 Stay tuned, the brain is evolving... 👾\n\n"
-                + random.choice(fun_endings)
-            )
             send_telegram_message(telegram_msg)
             send_telegram_message(f"✅ Completed training on {os.path.basename(batch_path)} at step {global_step}. Loss: {avg_loss:.5f}")
             send_telegram_message(f"📤 Uploaded model checkpoint for step {global_step}. Ready for next batch.")
