@@ -76,7 +76,8 @@ def self_play(model, num_games=100, device=None):
             if not valid_moves:
                 break
 
-            board_tensor = torch.tensor([encode_board(gs.board)]).float().to(device)
+            encoded = np.array([encode_board(gs.board)])
+            board_tensor = torch.from_numpy(encoded).float().to(device)
             with torch.no_grad():
                 policy_logits, _ = model(board_tensor)
             policy = torch.softmax(policy_logits.squeeze(), dim=0).detach().cpu().numpy()
