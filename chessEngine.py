@@ -114,6 +114,10 @@ class GameState():
     def makeMove(self, move):
         # save en passant state for undo functiality
         self.enPassantPossibleLog.append(self.enPassantPossible)
+        # Store previous halfMoveClock for undo
+        if not hasattr(self, 'halfMoveClockLog'):
+            self.halfMoveClockLog = []
+        self.halfMoveClockLog.append(self.halfMoveClock)
         self.board[move.startRow][move.startCol] = "--"
         self.board[move.endRow][move.endCol] = move.pieceMoved
         if move.pieceMoved == 'wK':
@@ -157,7 +161,8 @@ class GameState():
 
         self.moveLog.append(move)  # log the game
         # Update half-move clock for 50-move rule
-        if move.pieceCaptured or move.pieceMoved[1] == 'P':
+        # Reset halfMoveClock to 0 if pawn moved or capture; otherwise increment
+        if move.pieceCaptured != "--" or move.pieceMoved[1].lower() == 'p':
             self.halfMoveClock = 0
         else:
             self.halfMoveClock += 1
@@ -187,6 +192,9 @@ class GameState():
                 self.enPassantPossible = self.enPassantPossibleLog.pop()
             else:
                 self.enPassantPossible = ()
+            # Restore halfMoveClock from log
+            if hasattr(self, 'halfMoveClockLog') and self.halfMoveClockLog:
+                self.halfMoveClock = self.halfMoveClockLog.pop()
             move = self.moveLog.pop()
             self.board[move.startRow][move.startCol] = move.pieceMoved
             self.board[move.endRow][move.endCol] = move.pieceCaptured
@@ -222,8 +230,7 @@ class GameState():
                     self.board[move.endRow][move.endCol - 2] = self.board[move.endRow][move.endCol + 1]
                     self.board[move.endRow][move.endCol + 1] = "--"
             self.whiteToMove = not self.whiteToMove  # switch turns back
-            # Reverse halfMoveClock and positionCount for draw rules
-            self.halfMoveClock = max(0, self.halfMoveClock - 1)
+            # Reverse positionCount for draw rules
             if self.boardHistory:
                 board_string = self.boardHistory.pop()
                 if self.positionCount.get(board_string):
@@ -649,18 +656,17 @@ class Move():
 
 
     def checkForEndConditions(self, moves):
-        self.checkMate = False
-        self.staleMate = False
-        self.draw50 = self.halfMoveClock >= 100  # 50 full moves = 100 half-moves
-        self.drawRepetition = self.positionCounts.get(self.hashBoard(), 0) >= 3
-
         if len(moves) == 0:
             if self.inCheck():
-                self.checkMate = True
+                return True, False, False, False  # checkmate
             else:
-                self.staleMate = True
-
-        return self.checkMate, self.staleMate, self.draw50, self.drawRepetition
+                return False, True, False, False  # stalemate
+        if self.halfMoveClock >= 100:
+            return False, False, True, False  # 50-move rule
+        # Threefold repetition: count current position in moveLog
+        if self.moveLog and self.moveLog.count(self.moveLog[-1]) >= 3:
+            return False, False, False, True  # 3-fold repetition
+        return False, False, False, False  # No end condition met
 
     def hashBoard(self):
         return str(self.board) + str(self.whiteToMove)
