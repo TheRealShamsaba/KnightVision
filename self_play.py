@@ -5,6 +5,11 @@ from telegram_utils import send_telegram_message
 print("Self-play script loaded...")
 
 try:
+    send_telegram_message("📥 self_play.py loaded successfully.")
+except Exception as e:
+    print(f"⚠️ Telegram send failed: {e}")
+
+try:
     import google.colab
     IN_COLAB = True
 except ImportError:
@@ -50,6 +55,10 @@ def self_play(model, num_games=100):
     except Exception as e:
         print(f"⚠️ Telegram send failed: {e}")
     print(f"Starting self-play with {num_games} games...")
+    try:
+        send_telegram_message(f"🎮 Confirmed: Self-play function is running with {num_games} games.")
+    except Exception as e:
+        print(f"⚠️ Telegram send failed: {e}")
     for _ in range(num_games):
         gs = GameState()
         game_data = []

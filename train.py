@@ -51,6 +51,7 @@ class ChessPGNDataset(Dataset):
                     break
                 self.line_offsets.append(offset)
                 offset += len(line)
+        print(f"✅ ChessPGNDataset loaded: {len(self.line_offsets)} samples found in {self.file_path}")
 
     def __len__(self):
         return len(self.line_offsets)
@@ -108,8 +109,21 @@ def custom_collate(batch):
     else:
         return boards, moves, outcomes
 
+import sys
+games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
+# Check if file exists and is non-empty before proceeding
+if not os.path.isfile(games_path) or os.path.getsize(games_path) == 0:
+    msg = f"❌ Dataset file not found or empty: {games_path}"
+    print(msg)
+    send_telegram_message(msg)
+    sys.exit(1)
 model = ChessNet()
-dataset = ChessPGNDataset(os.path.join(BASE_DIR, "data", "games.jsonl"), max_samples=1000000)
+dataset = ChessPGNDataset(games_path, max_samples=1000000)
+if len(dataset) == 0:
+    msg = f"❌ Dataset loaded but contains 0 samples: {games_path}"
+    print(msg)
+    send_telegram_message(msg)
+    sys.exit(1)
 dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=False, num_workers=0)
                 
 
@@ -297,9 +311,28 @@ def capture_and_train():
     import io
     import contextlib
     buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
-        train_model(model, dataloader, epochs=10000, lr=1e-3)
+    try:
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            result = train_model(model, dataloader, epochs=10000, lr=1e-3)
+    except Exception as e:
+        msg = f"❌ Training failed: {e}"
+        print(msg)
+        send_telegram_message(msg)
+        return
     output = buffer.getvalue()
+    # Send a short summary first, then detailed output in chunks
+    summary = ""
+    if isinstance(result, dict) and result.get("losses") and result.get("accuracies"):
+        summary = (
+            f"✅ Training completed.\n"
+            f"Final Loss: {result['losses'][-1]:.4f}\n"
+            f"Final Accuracy: {result['accuracies'][-1]*100:.2f}%\n"
+            f"Final Score: {result['scores'][-1]:.2f}\n"
+            f"Check TensorBoard and checkpoints for details."
+        )
+    else:
+        summary = "✅ Training completed. Check logs for details."
+    send_telegram_message(summary)
     # Send output in chunks to avoid Telegram message size limits
     for i in range(0, len(output), 4000):
         chunk = output[i:i+4000]

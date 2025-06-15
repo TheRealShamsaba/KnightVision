@@ -140,12 +140,13 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         try:
             send_telegram_message("📣 Entering self_play()...")
             selfplay_data = self_play(model, num_games=games_per_iter)
-            # === Debug print statements after selfplay_data assignment ===
-            print(f"🧪 Self-play returned {len(selfplay_data)} games.")
+            # === DEBUG BLOCK: print number of samples ===
+            print(f"✅ Self-play returned {len(selfplay_data)} samples")
+            if len(selfplay_data) == 0:
+                send_telegram_message("⚠️ Self-play returned 0 samples — training skipped.")
+            print(f"🧪 Generated {len(selfplay_data)} self-play games")
             if selfplay_data:
-                print("🔍 Sample self-play game:", json.dumps(selfplay_data[0], indent=2)[:500])
-            else:
-                print("⚠️ No self-play games were generated.")
+                print("🔍 First self-play sample:", selfplay_data[0])
             logger.info(f"🧠 Self-play generated {len(selfplay_data)} games")
             if len(selfplay_data) == 0:
                 logger.warning("⚠️ Self-play returned 0 games. This may indicate a bug.")
