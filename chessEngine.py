@@ -656,17 +656,21 @@ class Move():
 
 
     def checkForEndConditions(self, moves):
+        # 50-move rule: 100 half-moves without pawn move or capture
+        draw50 = self.halfMoveClock >= 100
+        # Threefold repetition: check positionCounts dictionary for 3 or more occurrences
+        # Use hashBoard for position key
+        board_hash = self.hashBoard()
+        drawRepetition = self.positionCounts.get(board_hash, 0) >= 3
+        self.checkMate = False
+        self.staleMate = False
+
         if len(moves) == 0:
             if self.inCheck():
-                return True, False, False, False  # checkmate
+                self.checkMate = True
             else:
-                return False, True, False, False  # stalemate
-        if self.halfMoveClock >= 100:
-            return False, False, True, False  # 50-move rule
-        # Threefold repetition: count current position in moveLog
-        if self.moveLog and self.moveLog.count(self.moveLog[-1]) >= 3:
-            return False, False, False, True  # 3-fold repetition
-        return False, False, False, False  # No end condition met
+                self.staleMate = True
+        return self.checkMate, self.staleMate, draw50, drawRepetition
 
     def hashBoard(self):
         return str(self.board) + str(self.whiteToMove)
