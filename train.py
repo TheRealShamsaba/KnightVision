@@ -248,7 +248,7 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
         # ♟️ Self-play after each epoch
         print("♟️ Generating self-play games...")
         num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", 50))
-        new_selfplay_data = generate_self_play_data(model=model, num_games=num_selfplay_games, device=device)
+        new_selfplay_data = generate_self_play_data(model=model, num_games=num_selfplay_games)
         if new_selfplay_data:
             data.extend(new_selfplay_data)
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
