@@ -1,6 +1,7 @@
 # self_play.py
 import os
 import time
+import numpy as np
 from telegram_utils import send_telegram_message
 print("Self-play script loaded...")
 print("✅ Telegram test message dispatched.")
