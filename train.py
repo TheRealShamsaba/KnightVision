@@ -162,6 +162,7 @@ def train_model(model, data, epochs=2, batch_size=2048, device='cpu', pin_memory
     print("✅ Telegram message sent.")
     print("✅ Starting epoch loop...")
 
+    last_moves = None
     for epoch in range(start_epoch, epochs):
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
@@ -188,6 +189,7 @@ def train_model(model, data, epochs=2, batch_size=2048, device='cpu', pin_memory
             try:
                 boards_np, moves, outcomes = next(dataloader_iter)
                 print(f"🔁 Processing batch {i+1}/{len(dataloader)}")
+                last_moves = moves
             except Exception as e:
                 print(f"⚠️ Data loading error: {e}")
                 continue
@@ -245,9 +247,9 @@ def train_model(model, data, epochs=2, batch_size=2048, device='cpu', pin_memory
         writer.add_scalar("Loss/Policy", loss_policy.item(), epoch)
         writer.add_scalar("Loss/Value", loss_value.item(), epoch)
 
-        if preds_policy.size(0) == moves.size(0) and preds_policy.size(0) != 0:
+        if last_moves is not None and preds_policy.size(0) == last_moves.size(0) and preds_policy.size(0) != 0:
             _, predicted_moves = torch.max(preds_policy, 1)
-            accuracy = (predicted_moves == moves).float().mean().item()
+            accuracy = (predicted_moves == last_moves).float().mean().item()
         else:
             accuracy = 0.0
         writer.add_scalar("Metrics/Accuracy", accuracy, epoch)
