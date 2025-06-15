@@ -490,7 +490,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     sys.stderr.flush()
 
 # --- Main entry point for training ---
-if __name__ == '__main__':
+def main():
     import torch.multiprocessing as mp
     mp.set_start_method('spawn', force=True)
+    reinforcement_loop()
+
+if __name__ == "__main__":
     main()
