@@ -569,6 +569,7 @@ class GameState():
                     if self.board[0][0] == 'bR':
                         moves.append(Move((0,4), (0,2), self.board, isCastleMove = True))
                     
+
     def addPieceMovesConsideringPins(self, piece, r, c, moves, pins):
         isPinned = False
         pinDirection = ()
@@ -596,6 +597,27 @@ class GameState():
                 self.getPawnMoves(r, c, moves)
             else:
                 self.moveFunctions[piece](r, c, moves)
+
+    def checkForEndConditions(self, moves):
+        """
+        Check for checkmate, stalemate, 50-move draw, and repetition.
+        Returns (checkmate, stalemate, draw50, drawRepetition)
+        """
+        if len(moves) == 0:
+            if self.inCheck():
+                return True, False, False, False  # Checkmate
+            else:
+                return False, True, False, False  # Stalemate
+
+        if self.halfMoveClock >= 100:
+            return False, False, True, False  # 50-move rule
+
+        fen = self.getFEN()
+        repetitions = self.positionCounts.get(fen, 0)
+        if repetitions >= 3:
+            return False, False, False, True  # 3-fold repetition
+
+        return False, False, False, False  # No end condition
 
 class Move():
     # maps keys in values
