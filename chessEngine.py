@@ -46,6 +46,9 @@ class GameState():
         self.whiteKingLocation = (7,4)
         self.blackKingLocation = (0,4)
         self.insideSquareUnderAttack = False
+        # Track checkmate and stalemate
+        self.checkMate = False
+        self.staleMate = False
         # Castling rights tracking
         self.wKingMoved = False
         self.bKingMoved = False
@@ -55,6 +58,12 @@ class GameState():
         self.bRookQueensideMoved = False
         self.enPassantPossible = ()  # coordinates where en passant is possible
         self.enPassantPossibleLog = []
+
+        # Draw detection support
+        self.moveLogHistory = []
+        self.boardHistory = []
+        self.halfMoveClock = 0  # for 50-move rule
+        self.positionCount = {}  # for threefold repetition
     def loadFEN(self, fen):
         parts = fen.split()
         board_part = parts[0]
@@ -142,6 +151,15 @@ class GameState():
             self.enPassantPossible = ()
 
         self.moveLog.append(move)  # log the game
+        # Update halfMoveClock for 50-move rule
+        if move.pieceCaptured or move.pieceMoved.lower() == 'p':
+            self.halfMoveClock = 0
+        else:
+            self.halfMoveClock += 1
+        # Store current board position for threefold repetition
+        board_string = str(self.board)
+        self.boardHistory.append(board_string)
+        self.positionCount[board_string] = self.positionCount.get(board_string, 0) + 1
         self.whiteToMove = not self.whiteToMove  # swap players
         # update the king's location
         if move.pieceMoved == 'wK':
@@ -196,6 +214,14 @@ class GameState():
                     self.board[move.endRow][move.endCol - 2] = self.board[move.endRow][move.endCol + 1]
                     self.board[move.endRow][move.endCol + 1] = "--"
             self.whiteToMove = not self.whiteToMove  # switch turns back
+            # Reverse halfMoveClock and positionCount for draw rules
+            self.halfMoveClock = max(0, self.halfMoveClock - 1)
+            if self.boardHistory:
+                board_string = self.boardHistory.pop()
+                if self.positionCount.get(board_string):
+                    self.positionCount[board_string] -= 1
+                    if self.positionCount[board_string] <= 0:
+                        del self.positionCount[board_string]
             # update the king's location
             if move.pieceMoved == 'wK':
                 self.whiteKingLocation = (move.startRow, move.startCol)
@@ -229,12 +255,12 @@ class GameState():
                     validSquares = [(checkRow, checkCol)]
                 else:
                     for i in range(1, 8):
-                     if inCheck:
-                        square = (kingRow + checkDirRow * i, kingCol + checkDirCol * i)
-                        logger.debug("check detected? %s checks: %s", inCheck, checks)
-                        validSquares.append(square)
-                        if square == (checkRow, checkCol):
-                            break
+                        if inCheck:
+                            square = (kingRow + checkDirRow * i, kingCol + checkDirCol * i)
+                            logger.debug("check detected? %s checks: %s", inCheck, checks)
+                            validSquares.append(square)
+                            if square == (checkRow, checkCol):
+                                break
 
                 newMoves = []
                 for move in moves:
@@ -250,6 +276,8 @@ class GameState():
         else:
             moves = self.getAllPossibleMoves(pins)
 
+        # Check for checkmate/stalemate
+        self.checkMate, self.staleMate = self.checkForEndConditions(moves)
         return moves
                     
                 
@@ -614,3 +642,19 @@ class Move():
 
     # Load a position from a FEN string
     
+    def checkForEndConditions(self, validMoves):
+        if len(validMoves) == 0:
+            if self.inCheck():
+                return True, False  # checkmate
+            else:
+                return False, True  # stalemate
+        return False, False
+
+    def isDraw(self):
+        # 50-move rule
+        if self.halfMoveClock >= 100:
+            return True
+        # Threefold repetition
+        if any(count >= 3 for count in self.positionCount.values()):
+            return True
+        return False
