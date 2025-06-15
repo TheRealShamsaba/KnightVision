@@ -18,6 +18,19 @@ class CastleRights:
         self.bqs = bqs
 
 class GameState():
+    def isDraw(self):
+        # Basic draw check by 50-move rule or insufficient material
+        if self.moveLog and self.moveLog[-1].pieceMoved == self.moveLog[-1].pieceCaptured == '--':
+            if len(self.moveLog) >= 100:  # 50-move rule (half-moves)
+                return True
+        
+        # Very simple insufficient material check (only kings)
+        pieces = [sq for row in self.board for sq in row]
+        pieces = [p for p in pieces if p != '--']
+        if set(pieces) <= {'wK', 'bK'}:
+            return True
+
+        return False
     def __init__(self):
         #The board is 8*8 2d list, each element of the list has a 2 characters
         #the firsr char representes the color of the piece, 'b' , 'w'
