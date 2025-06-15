@@ -139,11 +139,12 @@ if len(dataset) == 0:
     send_telegram_message(msg)
     print("✅ Telegram message sent.")
     sys.exit(1)
-dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+
 print("✅ DataLoader initialized")
                 
 
 def train_model(model, data, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
+    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
     model.train()
