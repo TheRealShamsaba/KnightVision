@@ -1,5 +1,6 @@
 import sys
 import os
+import multiprocessing as mp
 def is_colab():
     try:
         import google.colab
@@ -487,13 +488,9 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     sys.stdout.flush()
     sys.stderr.flush()
 
-try:
-    import torch.multiprocessing as mp
+# --- Main entry point for training ---
+if __name__ == '__main__':
     mp.set_start_method("spawn", force=True)
-except RuntimeError:
-    pass
-
-if __name__ == "__main__":
     logger.info("🎯 Starting full reinforcement training loop")
     sys.stdout.flush()
     sys.stderr.flush()

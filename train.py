@@ -32,7 +32,7 @@ import chess.pgn
 from torch.utils.data import Dataset, DataLoader
 from datetime import datetime
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.multiprocessing.set_start_method("spawn", force=True)
+## Do not set multiprocessing start method globally here; move to main block.
 from torch.utils.tensorboard import SummaryWriter
 
 logger = logging.getLogger(__name__)
@@ -365,5 +365,9 @@ def capture_and_train():
         send_telegram_message(f"🧾 *Captured Training Output* (part {i//4000 + 1}):\n```{chunk}```")
         print("✅ Telegram message sent.")
 
-# Call the new function instead of direct train_model
-capture_and_train()
+# Main entry point for script execution
+if __name__ == '__main__':
+    import torch.multiprocessing
+    torch.multiprocessing.set_start_method('spawn', force=True)
+    # Call the new function instead of direct train_model
+    capture_and_train()
