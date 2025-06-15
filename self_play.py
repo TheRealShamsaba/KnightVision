@@ -156,6 +156,9 @@ def piece_value(piece):
     return values.get(piece.upper(), 0)
 
 
+def generate_self_play_data(model, num_games=50):
+    return self_play(model, num_games)
+
 if __name__ == "__main__":
     model = ChessNet()
     model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
