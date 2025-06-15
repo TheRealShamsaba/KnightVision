@@ -68,6 +68,7 @@ class GameState():
         self.boardStateCounter = {}
         self.draw50 = False
         self.drawRepetition = False
+        self.positionCounts = {}  # Used to track position frequency for repetition draw detection
     def loadFEN(self, fen):
         parts = fen.split()
         board_part = parts[0]
@@ -175,6 +176,12 @@ class GameState():
             self.blackKingLocation = (move.endRow, move.endCol)
         if move.isPawnPromotion:
             self.board[move.endRow][move.endCol] = move.pieceMoved[0] + move.promotionChoice
+        # Update positionCounts for repetition draw detection
+        fen = self.getFEN()
+        if fen in self.positionCounts:
+            self.positionCounts[fen] += 1
+        else:
+            self.positionCounts[fen] = 1
         
     """
     undo the last move made
@@ -239,6 +246,12 @@ class GameState():
             if move.isPawnPromotion:
                 self.board[move.startRow][move.startCol] = move.pieceMoved
                 self.board[move.endRow][move.endCol] = move.pieceCaptured
+        # Update positionCounts for repetition draw detection
+        fen = self.getFEN()
+        if fen in self.positionCounts:
+            self.positionCounts[fen] -= 1
+            if self.positionCounts[fen] <= 0:
+                del self.positionCounts[fen]
                 
     '''
     all moves considering checks
