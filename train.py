@@ -352,7 +352,16 @@ def capture_and_train():
     buffer = io.StringIO()
     try:
         with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
-            result = train_model(model, dataloader, optimizer, start_epoch=start_epoch, epochs=10000, batch_size=2048, device=device)
+            result = train_model(
+                model=model,
+                data=training_dataset,
+                optimizer=optimizer,
+                start_epoch=start_epoch,
+                epochs=100,
+                batch_size=1024,
+                device=device,
+                pin_memory=True
+            )
     except Exception as e:
         msg = f"❌ Training failed: {e}"
         print(msg)

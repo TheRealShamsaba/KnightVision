@@ -49,6 +49,34 @@ import random
 import requests
 
 from telegram_utils import send_telegram_message
+from train import train_model, ChessPGNDataset
+from model import ChessNet
+import torch
+import torch.optim as optim
+import os
+
+# === Set up paths and device ===
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
+checkpoint_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints")
+os.makedirs(checkpoint_dir, exist_ok=True)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# === Model, Dataset, Optimizer ===
+model = ChessNet().to(device)
+dataset = ChessPGNDataset(games_path, max_samples=100000)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+# === Start Training ===
+train_model(
+    model=model,
+    data=dataset,
+    optimizer=optimizer,
+    start_epoch=0,
+    epochs=10000,
+    batch_size=2048,
+    device=device
+)
 
 # Helper to escape unsafe Markdown for Telegram
 def safe_send_telegram(msg):
