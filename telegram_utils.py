@@ -1,7 +1,5 @@
 import os
 import requests
-from dotenv import load_dotenv
-load_dotenv('/content/drive/MyDrive/KnightVision/.env')
 
 def send_telegram_message(message, parse_mode="Markdown"):
     """
@@ -11,6 +9,8 @@ def send_telegram_message(message, parse_mode="Markdown"):
     if not message or not str(message).strip():
         print("⚠️ Skipping Telegram message: empty content")
         return
+
+    print("📤 Sending Telegram message:", message)
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -26,10 +26,15 @@ def send_telegram_message(message, parse_mode="Markdown"):
         "parse_mode": parse_mode
     }
     
+    print(f"📦 Preparing to send Telegram message:\n{message}")
+    print(f"📨 Payload: {payload}")
+    print(f"🔗 URL: {url}")
+    
     try:
-        response = requests.post(url, json=payload)
-        response.raise_for_status()
-        print("✅ Telegram API response:", response.json())
+       response = requests.post(url, data=payload)
+       print(f"✅ Telegram message sent: {message}")
+       print(f"📬 Telegram API response: {response.status_code} - {response.text}")
+       response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"❌ Failed to send Telegram message: {e}")
 
@@ -43,17 +48,13 @@ def send_game_report(game_number, result, moves):
         print(f"⚠️ Skipping game report for Game {game_number} — missing result or moves")
         return
 
-    result = str(result)
+    print(f"🧩 Game Report Details — Game #{game_number}")
+    print(f"Result: {result}")
+    print(f"Moves: {moves}")
 
     message = f"♟️ *Self-Play Game {game_number}* Completed\n"
     message += f"Result: *{result}*\n"
-    if len(moves) > 300:
-        moves = moves[:300] + "... (truncated)"
     message += f"Moves: `{moves}`"
-
-    if not message.strip():
-        print(f"⚠️ Skipping Telegram game report for Game {game_number} — message is empty")
-        return
 
     print("📤 Telegram game report:", message)  # Colab logging
     send_telegram_message(message)
