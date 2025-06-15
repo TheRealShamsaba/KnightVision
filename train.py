@@ -10,6 +10,7 @@ except ImportError:
 BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 run_name = "chess_rl_v2"
 checkpoint_dir = os.path.join(BASE_DIR, "runs", run_name, "checkpoints")
+resume_checkpoint = os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth")
 os.makedirs(checkpoint_dir, exist_ok=True)
 import torch
 try:
@@ -119,6 +120,16 @@ if not os.path.isfile(games_path) or os.path.getsize(games_path) == 0:
     print("✅ Telegram message sent.")
     sys.exit(1)
 model = ChessNet()
+optimizer = optim.Adam(model.parameters(), lr=1e-3)  # Predeclare for potential loading
+if os.path.exists(resume_checkpoint):
+    print("🔄 Resuming from checkpoint...")
+    checkpoint = torch.load(resume_checkpoint, map_location=device)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    start_epoch = checkpoint.get("epoch", 0)
+else:
+    print("🆕 Starting new training session.")
+    start_epoch = 0
 print("✅ Model initialized")
 dataset = ChessPGNDataset(games_path, max_samples=1000000)
 print(f"✅ Dataset instantiated: {len(dataset)} samples")
@@ -128,14 +139,13 @@ if len(dataset) == 0:
     send_telegram_message(msg)
     print("✅ Telegram message sent.")
     sys.exit(1)
-dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=False, num_workers=0)
+dataloader = DataLoader(dataset, batch_size=4096, shuffle=True, collate_fn=custom_collate, pin_memory=False, num_workers=2)
 print("✅ DataLoader initialized")
                 
 
-def train_model(model, dataloader, epochs=10000, lr=1e-3):
+def train_model(model, dataloader, optimizer, start_epoch=0, epochs=10000, lr=1e-3):
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
-    optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
     model.to(device)
     torch.backends.cudnn.benchmark = True
@@ -151,7 +161,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
     print("✅ Telegram message sent.")
     print("✅ Starting epoch loop...")
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
             torch.save({
@@ -159,7 +169,7 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': loss.item() if 'loss' in locals() else None,
-            }, os.path.join(checkpoint_dir, f"checkpoint_epoch_{epoch+1}.pth"))
+            }, os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth"))
             message = f"📦 train.py checkpoint saved — Epoch {epoch+1}"
             print("⚠️ Attempting to send message:", message)
             send_telegram_message(message)
@@ -209,10 +219,11 @@ def train_model(model, dataloader, epochs=10000, lr=1e-3):
                 print("⚠️ Skipping batch due to invalid loss (NaN or Inf)")
                 continue
 
-            message = f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}"
-            print("⚠️ Attempting to send message:", message)
-            send_telegram_message(message)
-            print("✅ Telegram message sent.")
+            if i % 10 == 0:
+                message = f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}"
+                print("⚠️ Attempting to send message:", message)
+                send_telegram_message(message)
+                print("✅ Telegram message sent.")
 
             optimizer.zero_grad()
             loss.backward()
@@ -326,7 +337,7 @@ def capture_and_train():
     buffer = io.StringIO()
     try:
         with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
-            result = train_model(model, dataloader, epochs=10000, lr=1e-3)
+            result = train_model(model, dataloader, optimizer, start_epoch=start_epoch, epochs=10000, lr=1e-3)
     except Exception as e:
         msg = f"❌ Training failed: {e}"
         print(msg)

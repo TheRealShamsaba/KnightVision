@@ -92,6 +92,8 @@ def self_play(model, num_games=100):
 
             move_index = encode_move(move.startRow, move.startCol, move.endRow, move.endCol)
             game_data.append((encode_board(gs.board), move_index))
+            if len(game_data) % 10 == 0:
+                print(f"♟️ Played {len(game_data)} moves so far...")
             gs.makeMove(move)
 
             time.sleep(0.01)
@@ -114,6 +116,8 @@ def self_play(model, num_games=100):
                 outcome = 0
             else:
                 outcome = (white_material - black_material) / max(white_material, black_material)
+        for state, move in game_data:
+            data.append((state, move, outcome))
         message = f"🏁 Game finished. Moves: {len(game_data)} | Outcome: {outcome}"
         print("📨 Message to send:", message)
         try:
@@ -133,6 +137,17 @@ def self_play(model, num_games=100):
         print(f"✅ Game {_ + 1} complete. Moves played: {len(game_data)} | Outcome: {outcome}", flush=True)
         if torch.cuda.is_available():
             print(f"💾 VRAM: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
+
+    import json
+    save_path = os.path.join(BASE_DIR, f"self_play_data_{time.strftime('%Y-%m-%d_%H-%M-%S')}.jsonl")
+    with open(save_path, "w") as f:
+        for state, move, outcome in data:
+            f.write(json.dumps({
+                "state": state,
+                "move": move,
+                "outcome": outcome
+            }) + "\n")
+    print(f"💾 Saved self-play data to {save_path} — {len(data)} samples.")
 
     print(f"📊 Total samples generated: {len(data)}")
     try:
@@ -154,7 +169,8 @@ if __name__ == "__main__":
     model = ChessNet()
     model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
     if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
+        print(f"❌ Model checkpoint not found: {model_path}")
+        exit(1)
     model.load_state_dict(torch.load(model_path, map_location=device))
     print("✅ Model loaded successfully — starting self_play()", flush=True)
     try:
