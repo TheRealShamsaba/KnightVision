@@ -737,6 +737,7 @@ class Move():
         if self.halfMoveClock >= 100:
             return True
         # Threefold repetition
-        if any(count >= 3 for count in self.positionCount.values()):
+        fen = self.getFEN()
+        if self.positionCounts.get(fen, 0) >= 3:
             return True
         return False
