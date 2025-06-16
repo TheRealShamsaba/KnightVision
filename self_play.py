@@ -70,8 +70,10 @@ def self_play(model, num_games=100, device=None):
         print("⏳ Game initialization complete — entering move loop", flush=True)
         gs = GameState()
         game_data = []
+        MAX_MOVES = 200  # hard limit to prevent endless games
+        move_count = 0
 
-        while True:  # Continue until the game ends naturally
+        while move_count < MAX_MOVES:  # Continue until the game ends naturally or max moves reached
             valid_moves = gs.getValidMoves()
             print(f"♟️ Valid moves count: {len(valid_moves)}")
             if not valid_moves:
@@ -99,31 +101,36 @@ def self_play(model, num_games=100, device=None):
             if len(game_data) % 10 == 0:
                 print(f"♟️ Played {len(game_data)} moves so far...")
             gs.makeMove(move)
+            move_count += 1
 
             time.sleep(0.01)
 
-        # Assign outcome based on game end state
-        if gs.inCheck() and len(gs.getValidMoves()) == 0:
-            # Checkmate
-            outcome = 1 if not gs.whiteToMove else -1
-            result_reason = "Checkmate"
-        elif len(gs.getValidMoves()) == 0:
-            # Stalemate
-            outcome = 0.5
-            result_reason = "Stalemate"
-        elif gs.isDraw():
-            # Draw by repetition or 50-move rule
-            outcome = 0.5
-            result_reason = "Draw (50-move or repetition)"
+        if move_count >= MAX_MOVES:
+            result_reason = "Max move limit reached"
+            outcome = 0.0  # can tune this if needed
         else:
-            # Game ended early — reward based on material balance
-            white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
-            black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
-            if white_material == black_material:
-                outcome = 0
+            # Assign outcome based on game end state
+            if gs.inCheck() and len(gs.getValidMoves()) == 0:
+                # Checkmate
+                outcome = 1 if not gs.whiteToMove else -1
+                result_reason = "Checkmate"
+            elif len(gs.getValidMoves()) == 0:
+                # Stalemate
+                outcome = 0.5
+                result_reason = "Stalemate"
+            elif gs.isDraw():
+                # Draw by repetition or 50-move rule
+                outcome = 0.5
+                result_reason = "Draw (50-move or repetition)"
             else:
-                outcome = (white_material - black_material) / max(white_material, black_material)
-            result_reason = "Material difference"
+                # Game ended early — reward based on material balance
+                white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
+                black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
+                if white_material == black_material:
+                    outcome = 0
+                else:
+                    outcome = (white_material - black_material) / max(white_material, black_material)
+                result_reason = "Material difference"
         for state, move in game_data:
             data.append((state, move, outcome))
         message = f"🏁 Game finished — {result_reason}. Moves: {len(game_data)} | Outcome: {outcome}"
