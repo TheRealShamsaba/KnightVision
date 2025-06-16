@@ -134,9 +134,9 @@ else:
     print("🆕 Starting new training session.")
     start_epoch = 0
 print("✅ Model initialized")
-dataset = ChessPGNDataset(games_path, max_samples=1000000)
-print(f"✅ Dataset instantiated: {len(dataset)} samples")
-if len(dataset) == 0:
+training_dataset = ChessPGNDataset(games_path, max_samples=1000000)
+print(f"✅ Dataset instantiated: {len(training_dataset)} samples")
+if len(training_dataset) == 0:
     msg = f"❌ Dataset loaded but contains 0 samples: {games_path}"
     print(msg)
     send_telegram_message(msg)
