@@ -6,6 +6,11 @@ def send_telegram_message(message, parse_mode="HTML"):
     Sends a message to a Telegram bot using credentials stored in environment variables.
     Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to be set in .env or system environment.
     """
+    enable_flag = str(os.getenv("ENABLE_TELEGRAM", "true")).lower()
+    if enable_flag in ("false", "0", "no"):
+        print("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
+        return
+
     if not message or not str(message).strip():
         print("⚠️ Skipping Telegram message: empty content")
         return

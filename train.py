@@ -339,6 +339,9 @@ telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
 telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
 def send_telegram_message(message):
+    if str(os.getenv("ENABLE_TELEGRAM", "true")).lower() in ("false", "0", "no"):
+        print("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
+        return
     global telegram
     if telegram_token and telegram_chat_id:
         try:
