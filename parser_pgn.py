@@ -8,6 +8,10 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 def send_telegram_message(message):
+    if str(os.getenv("ENABLE_TELEGRAM", "true")).lower() in ("false", "0", "no"):
+        logger.info("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
+        return
+
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
@@ -31,6 +35,9 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def notify_bot(message):
+    if str(os.getenv("ENABLE_TELEGRAM", "true")).lower() in ("false", "0", "no"):
+        logger.info("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
+        return
     try:
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",

@@ -14,6 +14,10 @@ output_dir = os.path.join(BASE_DIR, "data/human_batches")
 lines_per_file = 100000  # 100,000 lines per file
 
 def notify_bot(message):
+    if str(os.getenv("ENABLE_TELEGRAM", "true")).lower() in ("false", "0", "no"):
+        print("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
+        return
+
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
