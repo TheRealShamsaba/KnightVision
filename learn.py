@@ -50,6 +50,7 @@ import requests
 
 from telegram_utils import send_telegram_message
 from train import train_model, ChessPGNDataset
+from torch.utils.data import DataLoader
 from model import ChessNet
 import torch
 import torch.optim as optim
@@ -68,13 +69,14 @@ def main_train():
     # === Model, Dataset, Optimizer ===
     model = ChessNet().to(device)
     dataset = ChessPGNDataset(games_path, max_samples=100000)
-    training_data = [dataset[i] for i in range(len(dataset))]
+    dataloader = DataLoader(dataset, batch_size=2048, shuffle=True,
+                           pin_memory=(device.type == "cuda"))
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # === Start Training ===
     train_model(
         model=model,
-        data=training_data,
+        data=dataloader,
         optimizer=optimizer,
         start_epoch=0,
         epochs=10000,
