@@ -147,6 +147,12 @@ print("✅ DataLoader initialized")
                 
 
 def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
+    """Train the model on a dataset or DataLoader."""
+    data_is_dataloader = isinstance(data, DataLoader)
+    dataloader = data if data_is_dataloader else DataLoader(
+        data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory
+    )
+
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
     model.train()
@@ -166,7 +172,10 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
 
     last_moves = None
     for epoch in range(start_epoch, epochs):
-        dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+        if data_is_dataloader:
+            dataloader = data
+        else:
+            dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
             torch.save({
@@ -250,9 +259,16 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
         num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", 50))
         new_selfplay_data = generate_self_play_data(model=model, num_games=num_selfplay_games)
         if new_selfplay_data:
-            data.extend(new_selfplay_data)
+            if data_is_dataloader:
+                dataset = dataloader.dataset
+                if hasattr(dataset, "extend"):
+                    dataset.extend(new_selfplay_data)
+                dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+                data = dataloader
+            else:
+                data.extend(new_selfplay_data)
+                dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
-            dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
         else:
             print("⚠️ No self-play games generated.")
 
