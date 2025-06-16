@@ -56,3 +56,14 @@
 +- `self_play.py` – generates data via self-play
 +- `train.py` – training utilities
 +- `learn.py` – orchestrates self-play and training
+
+## Configuration
+
+Telegram notifications can be enabled by setting credentials in a `.env` file:
+
+```bash
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
+```
+
+Keep these values private and do not commit real tokens to version control.

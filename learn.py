@@ -197,9 +197,7 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         os.makedirs(CHECKPOINT_DIR)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    print(f"🚨 DEBUG: token={os.getenv('TELEGRAM_BOT_TOKEN')}, chat_id={os.getenv('TELEGRAM_CHAT_ID')}")
-    sys.stdout.flush()
-    sys.stderr.flush()
+    # Environment variables are loaded from .env; avoid printing sensitive credentials.
     print("🤖 Starting KnightVision RL — token and chat ID loaded successfully.")
     sys.stdout.flush()
     sys.stderr.flush()
