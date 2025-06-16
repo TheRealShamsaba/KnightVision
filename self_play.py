@@ -54,7 +54,7 @@ if torch.cuda.is_available():
 logger = logging.getLogger(__name__)
 
 
-def self_play(model, num_games=100, device=None):
+def self_play(model, num_games=100, device=None, sleep_ms=None):
     logger.info("✅ self_play() function has started executing")
     data = []
     model.eval()
@@ -70,6 +70,13 @@ def self_play(model, num_games=100, device=None):
         send_telegram_message(f"🎮 Confirmed: Self-play function is running with {num_games} games.")
     except Exception as e:
         logger.error("⚠️ Telegram send failed: %s", e)
+    # Determine optional sleep duration between moves
+    if sleep_ms is None:
+        try:
+            sleep_ms = float(os.getenv("SELFPLAY_SLEEP_MS", "0"))
+        except ValueError:
+            sleep_ms = 0
+
     for _ in range(num_games):
         logger.info("🕹️ Starting game %s/%s", _ + 1, num_games)
         logger.debug("⏳ Game initialization complete — entering move loop")
@@ -108,7 +115,8 @@ def self_play(model, num_games=100, device=None):
             gs.makeMove(move)
             move_count += 1
 
-            time.sleep(0.01)
+            if sleep_ms:
+                time.sleep(sleep_ms / 1000.0)
 
         if move_count >= MAX_MOVES:
             result_reason = "Max move limit reached"
