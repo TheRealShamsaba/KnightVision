@@ -56,3 +56,12 @@
 +- `self_play.py` – generates data via self-play
 +- `train.py` – training utilities
 +- `learn.py` – orchestrates self-play and training
+
+## Telegram Notifications
+
+Training utilities can optionally send progress updates through a Telegram bot. Configure these variables in your environment or `.env` file:
+
+- `TELEGRAM_BOT_TOKEN` – bot API token
+- `TELEGRAM_CHAT_ID` – chat ID that receives notifications
+- `TELEGRAM_ENABLED` – set to `0` to disable messages (defaults to `1`)
+- `TELEGRAM_NOTIFY_INTERVAL` – minimum seconds between messages
