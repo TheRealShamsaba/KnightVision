@@ -55,29 +55,32 @@ import torch
 import torch.optim as optim
 import os
 
-# === Set up paths and device ===
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
-checkpoint_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints")
-os.makedirs(checkpoint_dir, exist_ok=True)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# === Training entry point ===
+def main_train():
+    """Set up data and model, then start training."""
+    # === Set up paths and device ===
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
+    checkpoint_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# === Model, Dataset, Optimizer ===
-model = ChessNet().to(device)
-dataset = ChessPGNDataset(games_path, max_samples=100000)
-training_data = [dataset[i] for i in range(len(dataset))]
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    # === Model, Dataset, Optimizer ===
+    model = ChessNet().to(device)
+    dataset = ChessPGNDataset(games_path, max_samples=100000)
+    training_data = [dataset[i] for i in range(len(dataset))]
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-# === Start Training ===
-train_model(
-    model=model,
-    data=training_data,
-    optimizer=optimizer,
-    start_epoch=0,
-    epochs=10000,
-    batch_size=2048,
-    device=device
-)
+    # === Start Training ===
+    train_model(
+        model=model,
+        data=training_data,
+        optimizer=optimizer,
+        start_epoch=0,
+        epochs=10000,
+        batch_size=2048,
+        device=device
+    )
 
 # Helper to escape unsafe Markdown for Telegram
 def safe_send_telegram(msg):
@@ -566,36 +569,10 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     sys.stderr.flush()
 
 # --- Main entry point for training ---
-from train import train_model, ChessPGNDataset
-from model import ChessNet
-import torch
-import torch.optim as optim
-import os
 
-def main():
-    # === Set up directories and device ===
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
-    checkpoint_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints")
-    os.makedirs(checkpoint_dir, exist_ok=True)
-
-    # === Initialize model and training components ===
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ChessNet().to(device)
-    dataset = ChessPGNDataset(games_path, max_samples=100000)
-    training_data = [dataset[i] for i in range(len(dataset))]
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
-    # === Train the model ===
-    train_model(
-        model=model,
-        data=training_data,
-        optimizer=optimizer,
-        start_epoch=0,
-        epochs=10000,
-        batch_size=2048,
-        device=device
-    )
+def main_train_entry():
+    """Wrapper to launch basic supervised training."""
+    main_train()
 
 if __name__ == "__main__":
-    main()
+    main_train_entry()
