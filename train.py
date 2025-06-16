@@ -147,7 +147,6 @@ print("✅ DataLoader initialized")
                 
 
 def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
-    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
     model.train()
@@ -167,6 +166,7 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
 
     last_moves = None
     for epoch in range(start_epoch, epochs):
+        dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
             torch.save({
@@ -252,6 +252,7 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
         if new_selfplay_data:
             data.extend(new_selfplay_data)
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
+            dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
         else:
             print("⚠️ No self-play games generated.")
 
