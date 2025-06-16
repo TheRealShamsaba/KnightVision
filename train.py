@@ -147,6 +147,33 @@ print("✅ DataLoader initialized")
                 
 
 def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
+    """Train ``model`` on ``data``.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The neural network to train.
+    data : list or Dataset
+        Iterable of ``(board_tensor, move_index, outcome)`` samples. If a
+        ``Dataset`` instance is provided it will be converted to a list so
+        that new samples can be appended during training.
+    optimizer : torch.optim.Optimizer
+        Optimizer used for training ``model``.
+    start_epoch : int, optional
+        Epoch number to start from when resuming training.
+    epochs : int, optional
+        Number of epochs to train.
+    batch_size : int, optional
+        Mini batch size used by the ``DataLoader``.
+    device : str or torch.device, optional
+        Device on which to train the model.
+    pin_memory : bool, optional
+        Whether to use pinned memory in the ``DataLoader``.
+    """
+
+    if not isinstance(data, list):
+        data = [data[i] for i in range(len(data))]
+
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
@@ -251,6 +278,7 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
         new_selfplay_data = generate_self_play_data(model=model, num_games=num_selfplay_games)
         if new_selfplay_data:
             data.extend(new_selfplay_data)
+            dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
         else:
             print("⚠️ No self-play games generated.")

@@ -47,6 +47,7 @@
 +python self_play.py   # create training data
 +python train.py       # train using existing data
 +```
++The `train_model` function expects `data` to be a list of `(board_tensor, move_index, outcome)` tuples. If a `Dataset` is passed it will be converted to a list so new self-play games can be appended during training.
 +
 +## Files
 +
