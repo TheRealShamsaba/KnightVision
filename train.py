@@ -146,11 +146,25 @@ if len(training_dataset) == 0:
 print("✅ DataLoader initialized")
                 
 
-def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
+def train_model(
+    model,
+    data,
+    optimizer,
+    start_epoch=0,
+    epochs=2,
+    batch_size=2048,
+    device='cpu',
+    pin_memory=False,
+    num_workers=os.cpu_count(),
+):
     """Train the model on a dataset or DataLoader."""
     data_is_dataloader = isinstance(data, DataLoader)
     dataloader = data if data_is_dataloader else DataLoader(
-        data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory
+        data,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=pin_memory,
+        num_workers=num_workers,
     )
 
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
@@ -175,7 +189,13 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
         if data_is_dataloader:
             dataloader = data
         else:
-            dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+            dataloader = DataLoader(
+                data,
+                batch_size=batch_size,
+                shuffle=True,
+                pin_memory=pin_memory,
+                num_workers=num_workers,
+            )
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
             torch.save({
@@ -263,11 +283,23 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
                 dataset = dataloader.dataset
                 if hasattr(dataset, "extend"):
                     dataset.extend(new_selfplay_data)
-                dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+                dataloader = DataLoader(
+                    dataset,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    pin_memory=pin_memory,
+                    num_workers=num_workers,
+                )
                 data = dataloader
             else:
                 data.extend(new_selfplay_data)
-                dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+                dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    pin_memory=pin_memory,
+                    num_workers=num_workers,
+                )
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
         else:
             print("⚠️ No self-play games generated.")
@@ -394,7 +426,8 @@ def capture_and_train():
                 epochs=100,
                 batch_size=2048,
                 device=device,
-                pin_memory=True
+                pin_memory=True,
+                num_workers=os.cpu_count()
             )
     except Exception as e:
         msg = f"❌ Training failed: {e}"

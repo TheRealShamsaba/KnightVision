@@ -69,8 +69,13 @@ def main_train():
     # === Model, Dataset, Optimizer ===
     model = ChessNet().to(device)
     dataset = ChessPGNDataset(games_path, max_samples=100000)
-    dataloader = DataLoader(dataset, batch_size=2048, shuffle=True,
-                           pin_memory=(device.type == "cuda"))
+    dataloader = DataLoader(
+        dataset,
+        batch_size=2048,
+        shuffle=True,
+        pin_memory=(device.type == "cuda"),
+        num_workers=os.cpu_count(),
+    )
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # === Start Training ===
@@ -358,7 +363,8 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
                 epochs=epochs,
                 batch_size=2048,
                 device='cuda' if torch.cuda.is_available() else 'cpu',
-                pin_memory=False
+                pin_memory=True,
+                num_workers=os.cpu_count(),
             )
             print("✅ Training result:", result)
             avg_loss = sum(result['losses']) / len(result['losses'])

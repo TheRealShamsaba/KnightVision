@@ -71,13 +71,27 @@ class ChessDataset(Dataset):
         return self.data[idx]
 
 
-def create_dataloaders(jsonl_path, batch_size=64, val_split=0.1, max_games=None):
+def create_dataloaders(
+    jsonl_path, batch_size=64, val_split=0.1, max_games=None,
+    num_workers=os.cpu_count(), pin_memory=torch.cuda.is_available()
+):
     dataset = ChessDataset(jsonl_path, max_games=max_games)
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
     train_ds, val_ds = torch.utils.data.random_split(dataset, [train_size, val_size])
     
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size)
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
     
     return train_loader, val_loader, dataset.move_to_idx
