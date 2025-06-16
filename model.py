@@ -33,6 +33,7 @@ class ChessNet(nn.Module):
         self.value_fc2 = nn.Linear(512, 1)
 
     def forward(self, x):
+        x = x.to(next(self.parameters()).device)
         print("📥 Forward input shape:", x.shape)
         # Removed autocast to ensure consistent dtype across input and model parameters
         x = torch.relu(self.bn1(self.conv1(x)))
