@@ -1,4 +1,9 @@
 import os
+import logging
+from logging_utils import configure_logging
+
+configure_logging()
+logger = logging.getLogger(__name__)
 try:
     from google.colab import drive
     drive.mount('/content/drive')
@@ -6,7 +11,7 @@ try:
 except ImportError:
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-print(f"[DATASET] Base directory set to: {BASE_DIR}")
+logger.info("[DATASET] Base directory set to: %s", BASE_DIR)
 
 import json
 import torch
@@ -43,10 +48,10 @@ class ChessDataset(Dataset):
                     board_tensor = self.fen_to_tensor(fen)
                     move_idx = self.move_to_idx[move]
                     self.data.append((board_tensor, move_idx))
-            print(f"[DATASET] Loaded {len(self.data)} samples from {jsonl_path}")
-            print(f"[DATASET] Unique moves encoded: {len(self.move_to_idx)}")
+            logger.info("[DATASET] Loaded %s samples from %s", len(self.data), jsonl_path)
+            logger.info("[DATASET] Unique moves encoded: %s", len(self.move_to_idx))
         except Exception as e:
-            print(f"[ERROR] Failed to load dataset from {jsonl_path}: {e}")
+            logger.error("[ERROR] Failed to load dataset from %s: %s", jsonl_path, e)
 
     def fen_to_tensor(self, fen):
         board = chess.Board(fen)

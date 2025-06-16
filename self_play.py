@@ -3,14 +3,19 @@ import os
 import time
 import numpy as np
 from telegram_utils import send_telegram_message
-print("Self-play script loaded...")
-print("✅ Telegram test message dispatched.")
-print("📋 Note: All Telegram messages will log their intent before sending.")
+import logging
+from logging_utils import configure_logging
+
+configure_logging()
+logger = logging.getLogger(__name__)
+logger.info("Self-play script loaded...")
+logger.info("✅ Telegram test message dispatched.")
+logger.info("📋 Note: All Telegram messages will log their intent before sending.")
 
 try:
     send_telegram_message("📥 self_play.py loaded successfully.")
 except Exception as e:
-    print(f"⚠️ Telegram send failed: {e}")
+    logger.error("⚠️ Telegram send failed: %s", e)
 
 try:
     import google.colab
@@ -24,10 +29,10 @@ if IN_COLAB:
         drive.mount("/content/drive", force_remount=True)
         BASE_DIR = "/content/drive/MyDrive/KnightVision"
     except Exception as e:
-        print(f"⚠️ Colab drive mount failed: {e}")
+        logger.error("⚠️ Colab drive mount failed: %s", e)
         BASE_DIR = os.getenv("BASE_DIR", "/content/drive/MyDrive/KnightVision")
 else:
-    print("📦 Not running in Colab — skipping drive.mount")
+    logger.info("📦 Not running in Colab — skipping drive.mount")
     from dotenv import load_dotenv
     load_dotenv()
     BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -41,16 +46,16 @@ from model import ChessNet
 import psutil
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"🖥️ Using device: {device}")
+logger.info("🖥️ Using device: %s", device)
 
 if torch.cuda.is_available():
-    print(f"💾 VRAM used: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
+    logger.info("💾 VRAM used: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
 
 logger = logging.getLogger(__name__)
 
 
 def self_play(model, num_games=100, device=None):
-    print("✅ self_play() function has started executing", flush=True)
+    logger.info("✅ self_play() function has started executing")
     data = []
     model.eval()
     model.to(device)
@@ -58,16 +63,16 @@ def self_play(model, num_games=100, device=None):
     try:
         send_telegram_message(f"🤖 Starting self-play with {num_games} games...")
     except Exception as e:
-        print(f"⚠️ Telegram send failed: {e}")
-    print(f"Starting self-play with {num_games} games...")
-    print("🧪 Self-play loop entered")
+        logger.error("⚠️ Telegram send failed: %s", e)
+    logger.info("Starting self-play with %s games...", num_games)
+    logger.debug("🧪 Self-play loop entered")
     try:
         send_telegram_message(f"🎮 Confirmed: Self-play function is running with {num_games} games.")
     except Exception as e:
-        print(f"⚠️ Telegram send failed: {e}")
+        logger.error("⚠️ Telegram send failed: %s", e)
     for _ in range(num_games):
-        print(f"🕹️ Starting game {_ + 1}/{num_games}")
-        print("⏳ Game initialization complete — entering move loop", flush=True)
+        logger.info("🕹️ Starting game %s/%s", _ + 1, num_games)
+        logger.debug("⏳ Game initialization complete — entering move loop")
         gs = GameState()
         game_data = []
         MAX_MOVES = 200  # hard limit to prevent endless games
@@ -75,7 +80,7 @@ def self_play(model, num_games=100, device=None):
 
         while move_count < MAX_MOVES:  # Continue until the game ends naturally or max moves reached
             valid_moves = gs.getValidMoves()
-            print(f"♟️ Valid moves count: {len(valid_moves)}")
+            logger.debug("♟️ Valid moves count: %s", len(valid_moves))
             if not valid_moves:
                 break
 
@@ -99,7 +104,7 @@ def self_play(model, num_games=100, device=None):
             move_index = encode_move(move.startRow, move.startCol, move.endRow, move.endCol)
             game_data.append((encode_board(gs.board), move_index))
             if len(game_data) % 10 == 0:
-                print(f"♟️ Played {len(game_data)} moves so far...")
+                logger.debug("♟️ Played %s moves so far...", len(game_data))
             gs.makeMove(move)
             move_count += 1
 
@@ -138,25 +143,25 @@ def self_play(model, num_games=100, device=None):
             try:
                 send_telegram_message("⚖️ Draw detected during self-play.")
             except Exception as e:
-                print(f"⚠️ Telegram send failed: {e}")
-        print("📨 Message to send:", message)
+                logger.error("⚠️ Telegram send failed: %s", e)
+        logger.debug("📨 Message to send: %s", message)
         try:
             send_telegram_message(message)
         except Exception as e:
-            print(f"⚠️ Telegram send failed: {e}")
+            logger.error("⚠️ Telegram send failed: %s", e)
 
         if game_data:
             sample = game_data[0]
             try:
                 send_telegram_message(f"🎯 Sample game generated.\nMoves: {len(game_data)} | First move index: {sample[1]}")
             except Exception as e:
-                print(f"⚠️ Telegram send failed: {e}")
+                logger.error("⚠️ Telegram send failed: %s", e)
         else:
-            print("⚠️ No game data generated to report.")
-        print(f"🧠 RAM usage: {psutil.virtual_memory().percent}%")
-        print(f"✅ Game {_ + 1} complete. Moves played: {len(game_data)} | Outcome: {outcome}", flush=True)
+            logger.warning("⚠️ No game data generated to report.")
+        logger.debug("🧠 RAM usage: %s%%", psutil.virtual_memory().percent)
+        logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", _ + 1, len(game_data), outcome)
         if torch.cuda.is_available():
-            print(f"💾 VRAM: {torch.cuda.memory_allocated(device) / 1024 ** 2:.2f} MB")
+            logger.debug("💾 VRAM: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
 
     return data
 
@@ -171,19 +176,26 @@ def generate_self_play_data(model, num_games=50, device=None):
     return self_play(model, num_games, device)
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run self-play")
+    parser.add_argument("--log-level", default=os.getenv("LOG_LEVEL", "INFO"), help="Logging level")
+    args = parser.parse_args()
+    configure_logging(args.log_level)
+
     model = ChessNet()
     model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
     if not os.path.exists(model_path):
-        print(f"❌ Model checkpoint not found: {model_path}")
+        logger.error("❌ Model checkpoint not found: %s", model_path)
         exit(1)
     model.load_state_dict(torch.load(model_path, map_location=device))
-    print("✅ Model loaded successfully — starting self_play()", flush=True)
+    logger.info("✅ Model loaded successfully — starting self_play()")
     try:
         send_telegram_message("📦 Self-play started from __main__ with loaded model.")
     except Exception as e:
-        print(f"⚠️ Telegram send failed: {e}")
+        logger.error("⚠️ Telegram send failed: %s", e)
     model.to(device)
-    print(f"✅ Loaded model from {model_path}")
+    logger.info("✅ Loaded model from %s", model_path)
     data = self_play(model, num_games=50, device=device)
 
     import json
@@ -203,7 +215,7 @@ if __name__ == "__main__":
                 "move": move,
                 "outcome": outcome
             }, cls=NumpyEncoder) + "\n")
-    print(f"💾 Saved self-play data to {save_path} — {len(data)} samples.")
+    logger.info("💾 Saved self-play data to %s — %s samples.", save_path, len(data))
 
-    print("🧪 self_play() execution finished.")
+    logger.info("🧪 self_play() execution finished.")
     logger.info("Generated %s samples from self-play", len(data))
