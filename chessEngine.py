@@ -164,11 +164,11 @@ class GameState():
                 self.board[move.endRow][move.endCol - 2] = "--"
 
         # Update enPassantPossible
-        # Pawn double move logic for en passant
-        if self.board[move.endRow][move.endCol] == "wp" and move.startRow == 6 and move.endRow == 4:
-            self.enPassantPossible = (5, move.startCol)
-        elif self.board[move.endRow][move.endCol] == "bp" and move.startRow == 1 and move.endRow == 3:
-            self.enPassantPossible = (2, move.startCol)
+
+        self.enPassantPossibleLog.append(self.enPassantPossible)
+        if move.pieceMoved[1] == 'p' and abs(move.startRow - move.endRow) == 2:
+            self.enPassantPossible = ((move.startRow + move.endRow) // 2, move.startCol)
+
         else:
             self.enPassantPossible = ()
 
@@ -259,12 +259,17 @@ class GameState():
             if move.isPawnPromotion:
                 self.board[move.startRow][move.startCol] = move.pieceMoved
                 self.board[move.endRow][move.endCol] = move.pieceCaptured
-        # Update positionCounts for repetition draw detection
-        fen = self.getFEN()
-        if fen in self.positionCounts:
-            self.positionCounts[fen] -= 1
-            if self.positionCounts[fen] <= 0:
-                del self.positionCounts[fen]
+
+            # Undo en passant
+            if move.isEnPassantMove:
+                self.board[move.endRow][move.endCol] = "--"
+                self.board[move.startRow][move.endCol] = move.pieceCaptured
+            # Restore enPassantPossible
+            if self.enPassantPossibleLog:
+                self.enPassantPossible = self.enPassantPossibleLog.pop()
+            else:
+                self.enPassantPossible = ()
+
                 
     '''
     all moves considering checks
