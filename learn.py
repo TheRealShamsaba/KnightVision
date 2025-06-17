@@ -66,28 +66,23 @@ def main_train():
     os.makedirs(checkpoint_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # === Model, Dataset, Optimizer ===
-    model = ChessNet().to(device)
-    dataset = ChessPGNDataset(games_path, max_samples=100000)
-    dataloader = DataLoader(
-        dataset,
-        batch_size=2048,
-        shuffle=True,
-        pin_memory=(device.type == "cuda"),
-        num_workers=os.cpu_count(),
-    )
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-    # === Start Training ===
-    train_model(
-        model=model,
-        data=dataloader,
-        optimizer=optimizer,
-        start_epoch=0,
-        epochs=10000,
-        batch_size=2048,
-        device=device
-    )
+# === Model, Dataset, Optimizer ===
+model = ChessNet().to(device)
+dataset = ChessPGNDataset(games_path, max_samples=100000)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+# === Start Training ===
+train_model(
+    model=model,
+    data=dataset,
+    optimizer=optimizer,
+    start_epoch=0,
+    epochs=10000,
+    batch_size=2048,
+    device=device
+)
+
 
 # Helper to escape unsafe Markdown for Telegram
 def safe_send_telegram(msg):
@@ -576,9 +571,31 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
 
 # --- Main entry point for training ---
 
-def main_train_entry():
-    """Wrapper to launch basic supervised training."""
-    main_train()
+
+def main():
+    # === Set up directories and device ===
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
+    checkpoint_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
+    # === Initialize model and training components ===
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = ChessNet().to(device)
+    dataset = ChessPGNDataset(games_path, max_samples=100000)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+    # === Train the model ===
+    train_model(
+        model=model,
+        data=dataset,
+        optimizer=optimizer,
+        start_epoch=0,
+        epochs=10000,
+        batch_size=2048,
+        device=device
+    )
+
 
 if __name__ == "__main__":
     main_train_entry()

@@ -144,40 +144,19 @@ if len(training_dataset) == 0:
     print("✅ Telegram message sent.")
     sys.exit(1)
 
-print("✅ DataLoader initialized")
+print("✅ Dataset ready")
                 
 
 
 
 def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
-    """Train ``model`` on ``data``.
 
-    Parameters
-    ----------
-    model : torch.nn.Module
-        The neural network to train.
-    data : list or Dataset
-        Iterable of ``(board_tensor, move_index, outcome)`` samples. If a
-        ``Dataset`` instance is provided it will be converted to a list so
-        that new samples can be appended during training.
-    optimizer : torch.optim.Optimizer
-        Optimizer used for training ``model``.
-    start_epoch : int, optional
-        Epoch number to start from when resuming training.
-    epochs : int, optional
-        Number of epochs to train.
-    batch_size : int, optional
-        Mini batch size used by the ``DataLoader``.
-    device : str or torch.device, optional
-        Device on which to train the model.
-    pin_memory : bool, optional
-        Whether to use pinned memory in the ``DataLoader``.
-    """
-
-    if not isinstance(data, list):
-        data = [data[i] for i in range(len(data))]
-
-    dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+    if isinstance(data, DataLoader):
+        dataloader = data
+        dataset = dataloader.dataset
+    else:
+        dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+        dataset = data
 
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     print(f"Logging to: runs/{run_name}")
@@ -273,13 +252,14 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
         print("♟️ Generating self-play games...")
         num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", 50))
         new_selfplay_data = generate_self_play_data(model=model, num_games=num_selfplay_games)
-        if new_selfplay_data:
 
-
-            data.extend(new_selfplay_data)
-            dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+        if new_selfplay_data and hasattr(dataset, "extend"):
+            dataset.extend(new_selfplay_data)
+            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
 
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
+        elif new_selfplay_data:
+            print("⚠️ Dataset does not support extension; self-play data ignored.")
         else:
             print("⚠️ No self-play games generated.")
 
@@ -370,7 +350,7 @@ def capture_and_train():
         with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
             result = train_model(
                 model=model,
-                data=training_dataset,
+                data=dataset,
                 optimizer=optimizer,
                 start_epoch=start_epoch,
                 epochs=100,
