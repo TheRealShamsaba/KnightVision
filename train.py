@@ -34,6 +34,7 @@ import chess.pgn
 from torch.utils.data import Dataset, DataLoader
 from datetime import datetime
 from self_play import generate_self_play_data
+from telegram_utils import send_telegram_message
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ## Do not set multiprocessing start method globally here; move to main block.
 from torch.utils.tensorboard import SummaryWriter
@@ -178,24 +179,15 @@ def train_model(
     all_scores = []
 
     print("Starting training...")
-    message = "✅ train.py started training..."
-    print("⚠️ Attempting to send message:", message)
-    send_telegram_message(message)
-    print("✅ Telegram message sent.")
+    send_telegram_message("✅ train.py started training...")
     print("✅ Starting epoch loop...")
 
     last_moves = None
     for epoch in range(start_epoch, epochs):
-        if data_is_dataloader:
-            dataloader = data
-        else:
-            dataloader = DataLoader(
-                data,
-                batch_size=batch_size,
-                shuffle=True,
-                pin_memory=pin_memory,
-                num_workers=num_workers,
-            )
+
+
+        send_telegram_message(f"🚀 Starting epoch {epoch+1}")
+
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
             torch.save({
@@ -204,10 +196,7 @@ def train_model(
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': loss.item() if 'loss' in locals() else None,
             }, os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth"))
-            message = f"📦 train.py checkpoint saved — Epoch {epoch+1}"
-            print("⚠️ Attempting to send message:", message)
-            send_telegram_message(message)
-            print("✅ Telegram message sent.")
+            send_telegram_message(f"📦 Checkpoint saved — Epoch {epoch+1}")
         total_loss = 0
         total_reward = 0
 
@@ -254,11 +243,6 @@ def train_model(
                 print("⚠️ Skipping batch due to invalid loss (NaN or Inf)")
                 continue
 
-            if i % 10 == 0:
-                message = f"📦 Batch {i+1}/{len(dataloader)} — Epoch {epoch+1} | Loss: {loss.item():.4f} | Acc: {batch_accuracy:.2%}"
-                print("⚠️ Attempting to send message:", message)
-                send_telegram_message(message)
-                print("✅ Telegram message sent.")
 
             optimizer.zero_grad()
             loss.backward()
@@ -328,23 +312,13 @@ def train_model(
         print(f"🏋️‍♂️ Reward: {avg_reward:.4f}")
         print(f"📈 Score: {score:.2f}/100\n")
 
-        if (epoch + 1) % 1 == 0:
-            message = (
-                f"📊 *Training Progress — Epoch {epoch+1}*\n"
-                f"🎯 Accuracy: {accuracy * 100:.2f}%\n"
-                f"📉 Loss: {total_loss:.4f}\n"
-                f"🏋️‍♂️ Avg Reward: {avg_reward:.4f}\n"
-                f"📈 Score: {score:.2f}/100"
-            )
-            print("⚠️ Attempting to send message:", message)
-            send_telegram_message(message)
-            print("✅ Telegram message sent.")
-
-        if (epoch + 1) % 5 == 0:
-            message = f"📊 train.py progress — Epoch {epoch+1}: Score {score:.2f}"
-            print("⚠️ Attempting to send message:", message)
-            send_telegram_message(message)
-            print("✅ Telegram message sent.")
+        summary_msg = (
+            f"🏁 Epoch {epoch+1} finished\n"
+            f"🎯 Accuracy: {accuracy * 100:.2f}%\n"
+            f"📉 Loss: {total_loss:.4f}\n"
+            f"📈 Score: {score:.2f}/100"
+        )
+        send_telegram_message(summary_msg)
 
         all_losses.append(total_loss)
         all_rewards.append(total_reward / len(dataloader.dataset))
@@ -372,10 +346,11 @@ def train_model(
 
     writer.flush()
     writer.close()
-    message = "🏁 *train.py finished training.*\nAll epochs completed successfully. Check TensorBoard for metrics and the checkpoints folder for saved models."
-    print("⚠️ Attempting to send message:", message)
+    message = (
+        "🏁 *train.py finished training.*\n"
+        "All epochs completed successfully. Check TensorBoard for metrics and the checkpoints folder for saved models."
+    )
     send_telegram_message(message)
-    print("✅ Telegram message sent.")
     return {
         "losses": all_losses,
         "rewards": all_rewards,
@@ -383,32 +358,12 @@ def train_model(
         "scores": all_scores
     }
 
-telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
-telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-def send_telegram_message(message):
-    if str(os.getenv("ENABLE_TELEGRAM", "true")).lower() in ("false", "0", "no"):
-        print("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
-        return
-    global telegram
-    if telegram_token and telegram_chat_id:
-        try:
-            if "telegram" not in globals():
-                try:
-                    import telegram
-                except ImportError:
-                    import subprocess
-                    subprocess.run(["pip", "install", "python-telegram-bot==13.15"])
-                    import telegram
-            bot = telegram.Bot(token=telegram_token)
-            bot.send_message(chat_id=telegram_chat_id, text=message, parse_mode=telegram.ParseMode.MARKDOWN)
-        except Exception as e:
-            print(f"Failed to send Telegram message: {e}")
 
 # Send notification that training started
+
+# Notify that training has started
+
 send_telegram_message("🚀 Training started...")
-print("✅ Telegram message sent.")
-print(f"✅ Telegram configured: TOKEN is {'set' if telegram_token else 'missing'}, CHAT_ID is {'set' if telegram_chat_id else 'missing'}")
 
 
 # Function to capture stdout and stderr during training and send via Telegram in chunks

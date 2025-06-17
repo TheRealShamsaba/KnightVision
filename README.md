@@ -57,13 +57,14 @@
 +- `train.py` – training utilities
 +- `learn.py` – orchestrates self-play and training
 
-## Configuration
 
-Telegram notifications can be enabled by setting credentials in a `.env` file:
+=======
+## Telegram Notifications
 
-```bash
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_CHAT_ID=...
-```
+Training utilities can optionally send progress updates through a Telegram bot. Configure these variables in your environment or `.env` file:
 
-Keep these values private and do not commit real tokens to version control.
+- `TELEGRAM_BOT_TOKEN` – bot API token
+- `TELEGRAM_CHAT_ID` – chat ID that receives notifications
+- `TELEGRAM_ENABLED` – set to `0` to disable messages (defaults to `1`)
+- `TELEGRAM_NOTIFY_INTERVAL` – minimum seconds between messages
+>>>>>>> codex/add-configurable-flag-for-telegram-notifications

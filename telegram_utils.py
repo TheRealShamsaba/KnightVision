@@ -1,65 +1,70 @@
 import os
+import time
 import requests
 
-def send_telegram_message(message, parse_mode="HTML"):
+# Global settings controlled via environment variables
+TELEGRAM_ENABLED = os.getenv("TELEGRAM_ENABLED", "1").lower() not in ("0", "false")
+TELEGRAM_NOTIFY_INTERVAL = int(os.getenv("TELEGRAM_NOTIFY_INTERVAL", "0"))
+_last_sent = 0
+
+def send_telegram_message(message, parse_mode="HTML", force=False):
+    """Send a Telegram message if credentials are configured.
+
+    Set ``TELEGRAM_ENABLED=0`` to disable notifications entirely. ``TELEGRAM_NOTIFY_INTERVAL``
+    defines the minimum number of seconds between messages unless ``force`` is True.
+    ``TELEGRAM_BOT_TOKEN`` and ``TELEGRAM_CHAT_ID`` must also be set.
     """
-    Sends a message to a Telegram bot using credentials stored in environment variables.
-    Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to be set in .env or system environment.
-    """
-    enable_flag = str(os.getenv("ENABLE_TELEGRAM", "true")).lower()
-    if enable_flag in ("false", "0", "no"):
-        print("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
+
+
+    global _last_sent
+
+    if not TELEGRAM_ENABLED:
+        print("⚠️ Telegram notifications disabled.")
         return
+
+    if TELEGRAM_NOTIFY_INTERVAL > 0 and not force:
+        now = time.time()
+        if now - _last_sent < TELEGRAM_NOTIFY_INTERVAL:
+            print("⏳ Skipping Telegram message due to interval limit")
+            return
+        _last_sent = now
+
 
     if not message or not str(message).strip():
         print("⚠️ Skipping Telegram message: empty content")
         return
 
-    print("📤 Sending Telegram message:", message)
-
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    
+
     if not token or not chat_id:
         print("⚠️ Telegram credentials not found in environment.")
         return
-    
+
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": message,
-        "parse_mode": parse_mode
+        "parse_mode": parse_mode,
     }
-    
-    print(f"📦 Preparing to send Telegram message:\n{message}")
-    print(f"📨 Payload: {payload}")
-    print(f"🔗 URL: {url}")
-    
+
     try:
-       response = requests.post(url, data=payload)
-       print(f"✅ Telegram message sent: {message}")
-       print(f"📬 Telegram API response: {response.status_code} - {response.text}")
-       response.raise_for_status()
+        response = requests.post(url, data=payload)
+        response.raise_for_status()
+        print(f"✅ Telegram message sent: {message}")
     except requests.exceptions.RequestException as e:
         print(f"❌ Failed to send Telegram message: {e}")
 
 
-# --- New function for sending self-play game reports ---
 def send_game_report(game_number, result, moves):
-    """
-    Sends a formatted message to Telegram with self-play game results.
-    """
+    """Send a formatted report summarizing a self-play game."""
     if not result or not moves:
         print(f"⚠️ Skipping game report for Game {game_number} — missing result or moves")
         return
 
-    print(f"🧩 Game Report Details — Game #{game_number}")
-    print(f"Result: {result}")
-    print(f"Moves: {moves}")
-
-    message = f"♟️ *Self-Play Game {game_number}* Completed\n"
-    message += f"Result: *{result}*\n"
-    message += f"Moves: `{moves}`"
-
-    print("📤 Telegram game report:", message)  # Colab logging
+    message = (
+        f"♟️ *Self-Play Game {game_number}* Completed\n"
+        f"Result: *{result}*\n"
+        f"Moves: `{moves}`"
+    )
     send_telegram_message(message)
