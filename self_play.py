@@ -54,8 +54,11 @@ if torch.cuda.is_available():
 logger = logging.getLogger(__name__)
 
 
-def self_play(model, num_games=100, device=None, sleep_ms=None):
-    logger.info("✅ self_play() function has started executing")
+
+
+def self_play(model, num_games=100, device=None, sleep_time=0.0):
+    print("✅ self_play() function has started executing", flush=True)
+
     data = []
     model.eval()
     model.to(device)
@@ -115,8 +118,11 @@ def self_play(model, num_games=100, device=None, sleep_ms=None):
             gs.makeMove(move)
             move_count += 1
 
-            if sleep_ms:
-                time.sleep(sleep_ms / 1000.0)
+
+
+            if sleep_time:
+                time.sleep(sleep_time)
+
 
         if move_count >= MAX_MOVES:
             result_reason = "Max move limit reached"
@@ -180,8 +186,8 @@ def piece_value(piece):
     return values.get(piece.upper(), 0)
 
 
-def generate_self_play_data(model, num_games=50, device=None):
-    return self_play(model, num_games, device)
+def generate_self_play_data(model, num_games=50, device=None, sleep_time=0.0):
+    return self_play(model, num_games, device, sleep_time)
 
 if __name__ == "__main__":
     import argparse
