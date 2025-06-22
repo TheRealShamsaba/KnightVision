@@ -66,3 +66,32 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
     print("✅ Finished Stockfish Evaluation")
     print("Summary:", results)
     return results
+
+
+if __name__ == "__main__":
+    import argparse
+    import torch
+
+    parser = argparse.ArgumentParser(description="Play KnightVision model against Stockfish")
+    parser.add_argument("--model-path",     required=True, help="Path to the .pth model checkpoint")
+    parser.add_argument("--num-games",      type=int,   default=10, help="Number of games to play")
+    parser.add_argument("--stockfish-path", default="/usr/games/stockfish", help="Path to Stockfish binary")
+    parser.add_argument("--skill-level",    type=int,   default=5, help="Stockfish skill level")
+    parser.add_argument("--max-moves",      type=int,   default=250, help="Max half-moves per game")
+    args = parser.parse_args()
+
+    # Load model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = ChessNet().to(device)
+    state = torch.load(args.model_path, map_location=device)
+    model.load_state_dict(state)
+    model.eval()
+
+    # Run evaluation
+    play_vs_stockfish(
+        model,
+        num_games      = args.num_games,
+        stockfish_path = args.stockfish_path,
+        skill_level    = args.skill_level,
+        max_moves      = args.max_moves,
+    )
