@@ -5,7 +5,7 @@ import numpy as np
 from telegram_utils import send_telegram_message
 import logging
 from logging_utils import configure_logging
-
+from ai import encode_board
 configure_logging()
 logger = logging.getLogger(__name__)
 logger.info("Self-play script loaded...")
@@ -87,10 +87,9 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
         logger.debug("⏳ Game initialization complete — entering move loop")
         gs = GameState()
         game_data = []
-        MAX_MOVES = 200  # hard limit to prevent endless games
         move_count = 0
 
-        while move_count < MAX_MOVES:  # Continue until the game ends naturally or max moves reached
+        while True:  # Continue until the game ends naturally or max moves reached
             valid_moves = gs.getValidMoves()
             logger.debug("♟️ Valid moves count: %s", len(valid_moves))
             if not valid_moves:
@@ -126,32 +125,28 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
                 time.sleep(sleep_time)
 
 
-        if move_count >= MAX_MOVES:
-            result_reason = "Max move limit reached"
-            outcome = 0.0  # can tune this if needed
+        # Assign outcome based on game end state
+        if gs.inCheck() and len(gs.getValidMoves()) == 0:
+            # Checkmate
+            outcome = 1 if not gs.whiteToMove else -1
+            result_reason = "Checkmate"
+        elif len(gs.getValidMoves()) == 0:
+            # Stalemate
+            outcome = 0.5
+            result_reason = "Stalemate"
+        elif gs.isDraw():
+            # Draw by repetition or 50-move rule
+            outcome = 0.5
+            result_reason = "Draw (50-move or repetition)"
         else:
-            # Assign outcome based on game end state
-            if gs.inCheck() and len(gs.getValidMoves()) == 0:
-                # Checkmate
-                outcome = 1 if not gs.whiteToMove else -1
-                result_reason = "Checkmate"
-            elif len(gs.getValidMoves()) == 0:
-                # Stalemate
-                outcome = 0.5
-                result_reason = "Stalemate"
-            elif gs.isDraw():
-                # Draw by repetition or 50-move rule
-                outcome = 0.5
-                result_reason = "Draw (50-move or repetition)"
+            # Game ended early — reward based on material balance
+            white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
+            black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
+            if white_material == black_material:
+                outcome = 0
             else:
-                # Game ended early — reward based on material balance
-                white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
-                black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
-                if white_material == black_material:
-                    outcome = 0
-                else:
-                    outcome = (white_material - black_material) / max(white_material, black_material)
-                result_reason = "Material difference"
+                outcome = (white_material - black_material) / max(white_material, black_material)
+            result_reason = "Material difference"
         for state, move in game_data:
             data.append((state, move, outcome))
         message = f"🏁 Game finished — {result_reason}. Moves: {len(game_data)} | Outcome: {outcome}"

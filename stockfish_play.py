@@ -4,12 +4,11 @@ import chess.engine
 import torch
 from model import ChessNet
 from ai import encode_board, decode_move_index
-import numpy as np
 
 def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
-    model = model.to(device).float()
+    model = model.to(device)
 
     if device.type != "cuda":
         print("⚠️ WARNING: Running on CPU — Stockfish eval will be slower.")
@@ -30,8 +29,8 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
             while not board.is_game_over() and move_count < max_moves:
                 if board.turn == ai_color:
                     # AI's turn: encode board and get network logits
-                    encoded = encode_board(board)  # numpy array
-                    board_tensor = torch.from_numpy(encoded).float().unsqueeze(0).to(device)
+                    encoded = encode_board(board)
+                    board_tensor = torch.tensor([encoded], dtype=torch.float32).to(device)
                     
                     with torch.no_grad():
                         logits, _ = model(board_tensor)  # shape [1, 4096]
@@ -93,7 +92,7 @@ if __name__ == "__main__":
 
     # Load model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ChessNet().to(device).float()
+    model = ChessNet().to(device)
     state = torch.load(args.model_path, map_location=device)
     model.load_state_dict(state)
     model.eval()
