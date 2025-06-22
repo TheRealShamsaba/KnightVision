@@ -1,11 +1,10 @@
-from ai import decode_move_index  # Uses shared decode logic
 import subprocess
 subprocess.check_call(["pip", "install", "chess"])
 import chess
 import chess.engine
 import torch
 from model import ChessNet
-from ai import encode_board, decode_move_index
+from ai import encode_board
 import numpy as np
 
 def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
