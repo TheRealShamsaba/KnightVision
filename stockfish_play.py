@@ -1,4 +1,6 @@
 from ai import decode_move_index  # Uses shared decode logic
+import subprocess
+subprocess.check_call(["pip", "install", "chess"])
 import chess
 import chess.engine
 import torch
