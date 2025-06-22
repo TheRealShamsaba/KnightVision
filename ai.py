@@ -2,7 +2,8 @@ import chess
 import os
 if "COLAB_GPU" in os.environ:
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
-BASE_DIR = os.environ.get("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+else:
+    BASE_DIR = os.environ.get("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import numpy as np
 
@@ -25,9 +26,14 @@ def encode_board(board):
             row = 7 - (square // 8)  # Flip the row for correct perspective
             col = square % 8
             color = 'w' if piece.color == chess.WHITE else 'b'
-            key = f"{color}{piece.symbol().upper()}"
-            if key in PIECE_TO_INDEX:
-                encoded[PIECE_TO_INDEX[key], row, col] = 1.0
+            # Map pawns to lowercase 'p' and other pieces to their uppercase symbol
+            if piece.piece_type == chess.PAWN:
+                letter = 'p'
+            else:
+                letter = piece.symbol().upper()
+            key = f"{color}{letter}"
+            # direct assignment (mapping always valid)
+            encoded[PIECE_TO_INDEX[key], row, col] = 1.0
     return encoded
 
 def decode_move_index(index):

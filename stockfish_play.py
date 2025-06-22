@@ -9,7 +9,7 @@ import numpy as np
 def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
-    model = model.to(device)
+    model = model.to(device).float()
 
     if device.type != "cuda":
         print("⚠️ WARNING: Running on CPU — Stockfish eval will be slower.")
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     # Load model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ChessNet().to(device)
+    model = ChessNet().to(device).float()
     state = torch.load(args.model_path, map_location=device)
     model.load_state_dict(state)
     model.eval()

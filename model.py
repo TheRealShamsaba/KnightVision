@@ -34,7 +34,9 @@ class ChessNet(nn.Module):
         self.value_fc2 = nn.Linear(512, 1)
 
     def forward(self, x):
-        x = x.to(next(self.parameters()).device)
+        # ensure input is on the same device and dtype as the model parameters
+        param = next(self.parameters())
+        x = x.to(device=param.device, dtype=param.dtype)
         if self.verbose:
             print("📥 Forward input shape:", x.shape)
         # Removed autocast to ensure consistent dtype across input and model parameters

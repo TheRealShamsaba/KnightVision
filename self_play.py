@@ -53,7 +53,8 @@ if torch.cuda.is_available():
 
 logger = logging.getLogger(__name__)
 
-
+model = ChessNet().to(device)
+model.eval()
 
 
 def self_play(model, num_games=100, device=None, sleep_time=0.0):
@@ -94,10 +95,10 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
             logger.debug("♟️ Valid moves count: %s", len(valid_moves))
             if not valid_moves:
                 break
-
-            encoded = np.array([encode_board(gs.board)])
-            encoded = encoded.astype(np.float32)
-            board_tensor = torch.from_numpy(encoded).float().to(device)
+            
+            encoded = encode_board(gs.board)
+            board_np = np.expand_dims(np.array(encoded, dtype=np.float32), 0)  # shape [1,12,8,8]
+            board_tensor = torch.from_numpy(board_np).to(device)
             with torch.no_grad():
                 policy_logits, _ = model(board_tensor)
             policy = torch.softmax(policy_logits.squeeze(), dim=0).detach().cpu().numpy()

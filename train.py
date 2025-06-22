@@ -46,6 +46,7 @@ class ChessPGNDataset(Dataset):
         self.file_path = path
         self.move_encoder = move_encoder or self.default_move_encoder
         self.max_samples = max_samples
+        self.additional_data = []
 
         # Store only the byte offsets for each line for sampling
         self.line_offsets = []
@@ -59,9 +60,11 @@ class ChessPGNDataset(Dataset):
         print(f"✅ ChessPGNDataset loaded: {len(self.line_offsets)} samples found in {self.file_path}")
 
     def __len__(self):
-        return len(self.line_offsets)
+        return len(self.line_offsets) + len(self.additional_data)
     
     def __getitem__(self, idx):
+        if idx >= len(self.line_offsets):
+            return self.additional_data[idx - len(self.line_offsets)]
         offset = self.line_offsets[idx]
         with open(self.file_path, 'r') as f:
             f.seek(offset)
@@ -149,13 +152,13 @@ print("✅ Dataset ready")
 
 
 
-def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False):
+def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False, num_workers=0):
 
     if isinstance(data, DataLoader):
         dataloader = data
         dataset = dataloader.dataset
     else:
-        dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+        dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory, num_workers=num_workers)
         dataset = data
 
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
@@ -216,7 +219,7 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
             total_reward += rewards.sum().item()
             writer.add_scalar("Metrics/Reward", rewards.sum().item(), epoch * len(dataloader) + i)
 
-            with torch.cuda.amp.autocast(dtype=torch.float16):
+            with torch.cuda.amp.autocast():
                 preds_policy, preds_value = model(boards)
 
             if preds_policy.size(0) == moves.size(0):
@@ -255,7 +258,7 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
 
         if new_selfplay_data and hasattr(dataset, "extend"):
             dataset.extend(new_selfplay_data)
-            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory, num_workers=num_workers)
 
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
         elif new_selfplay_data:
@@ -350,7 +353,7 @@ def capture_and_train():
         with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
             result = train_model(
                 model=model,
-                data=dataset,
+                data=training_dataset,
                 optimizer=optimizer,
                 start_epoch=start_epoch,
                 epochs=100,

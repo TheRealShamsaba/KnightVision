@@ -609,4 +609,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main_train_entry()
+    main_train()
