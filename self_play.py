@@ -8,6 +8,8 @@ from logging_utils import configure_logging
 from ai import encode_board
 import datetime
 import tensorflow as tf
+# Ensure BASE_DIR is defined before use
+BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # set up TensorFlow log directory for self-play
 SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
