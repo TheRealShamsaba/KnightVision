@@ -5,7 +5,6 @@ import torch
 from model import ChessNet
 from ai import encode_board
 from ai import decode_move_index
-import numpy as np
 
 def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -33,7 +32,7 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                     if not isinstance(board, chess.Board):
                         raise ValueError(f"Expected chess.Board, got {type(board)}")
                     encoded = encode_board(board)
-                    board_tensor = torch.tensor(np.array([encoded]), dtype=torch.float32).to(device)
+                    board_tensor = torch.tensor([encoded], dtype=torch.float32).to(device)
                     with torch.no_grad():
                         policy_logits, _ = model(board_tensor)
                         move_idx = torch.argmax(policy_logits, dim=1).item()
@@ -41,16 +40,13 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                     start_row, start_col, end_row, end_col = decode_move_index(move_idx)
                     move = chess.Move.from_uci(f"{chr(start_col + 97)}{8 - start_row}{chr(end_col + 97)}{8 - end_row}")
                     
-                    legal_moves = list(board.legal_moves)
-                    if move not in legal_moves:
-                        print(f"⚠️ Illegal move predicted: {move}. Using fallback.")
-                        # Safely pick the first legal move if available
-                        fallback_move = legal_moves[0] if legal_moves else None
-                        if fallback_move is None:
-                            print("❌ No legal fallback move available. Ending game.")
-                            break
-                        move = fallback_move
-                    board.push(move)
+                    # If the AI predicts an illegal move, fall back to Stockfish for a legal move
+                    if move not in board.legal_moves:
+                        print(f"⚠️ Illegal move predicted: {move}. Falling back to engine.")
+                        result = engine.play(board, chess.engine.Limit(time=0.01))
+                        board.push(result.move)
+                    else:
+                        board.push(move)
                 else:
                     result = engine.play(board, chess.engine.Limit(time=0.1))
                     board.push(result.move)
