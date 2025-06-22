@@ -57,6 +57,12 @@ import torch.optim as optim
 import os
 from stockfish_play import play_vs_stockfish
 
+# Project directories and data paths
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+games_path = os.path.join(DATA_DIR, "games.jsonl")
+
 # === Training entry point ===
 def main_train():
     """Set up data and model, then start training."""
