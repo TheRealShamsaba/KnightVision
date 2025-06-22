@@ -1,5 +1,4 @@
 import subprocess
-subprocess.check_call(["pip", "install", "chess"])
 import chess
 import chess.engine
 import torch
