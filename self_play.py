@@ -65,7 +65,7 @@ model = ChessNet().to(device)
 model.eval()
 
 
-def self_play(model, num_games=100, device=None, sleep_time=0.0):
+def self_play(model, num_games=100, device=None, sleep_time=0.0, max_moves=500):
     print("✅ self_play() function has started executing", flush=True)
 
     # ensure we have a valid device
@@ -98,6 +98,9 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
             sleep_time = float(os.getenv("SELFPLAY_SLEEP_MS", "0"))
         except ValueError:
             sleep_time = 0
+
+    # Allow game length capping
+    maxed_out = False
 
     for _ in range(num_games):
         logger.info("🕹️ Starting game %s/%s", _ + 1, num_games)
@@ -145,14 +148,21 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
             gs.makeMove(move)
             move_count += 1
 
-
+            # enforce move limit
+            if move_count >= max_moves:
+                logger.warning(f"⚠️ Max moves reached ({max_moves}); terminating game early.")
+                maxed_out = True
+                break
 
             if sleep_time:
                 time.sleep(sleep_time)
 
 
-        # Assign outcome based on game end state
-        if gs.inCheck() and len(gs.getValidMoves()) == 0:
+        # Determine outcome, with max-move override
+        if maxed_out:
+            outcome = 0.5
+            result_reason = f"Max moves ({max_moves}) reached"
+        elif gs.inCheck() and len(gs.getValidMoves()) == 0:
             # Checkmate
             outcome = 1 if not gs.whiteToMove else -1
             result_reason = "Checkmate"
@@ -165,7 +175,7 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
             outcome = 0.5
             result_reason = "Draw (50-move or repetition)"
         else:
-            # Game ended early — reward based on material balance
+            # Material-based score for early termination
             white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
             black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
             if white_material == black_material:
@@ -221,8 +231,8 @@ def piece_value(piece):
     return values.get(piece.upper(), 0)
 
 
-def generate_self_play_data(model, num_games=50, device=None, sleep_time=0.0):
-    return self_play(model, num_games, device, sleep_time)
+def generate_self_play_data(model, num_games=50, device=None, sleep_time=0.0, max_moves=500):
+    return self_play(model, num_games, device, sleep_time, max_moves=max_moves)
 
 if __name__ == "__main__":
     import argparse
@@ -245,7 +255,7 @@ if __name__ == "__main__":
         logger.error("⚠️ Telegram send failed: %s", e)
     model.to(device)
     logger.info("✅ Loaded model from %s", model_path)
-    data = self_play(model, num_games=50, device=device)
+    data = self_play(model, num_games=50, device=device, max_moves=500)
 
     import json
     import numpy as np
