@@ -2,6 +2,9 @@
 import os
 import time
 import numpy as np
+# Dirichlet noise parameters
+EPSILON = float(os.getenv("DIR_NOISE_EPS", "0.25"))
+ALPHA = float(os.getenv("DIR_NOISE_ALPHA", "0.3"))
 from telegram_utils import send_telegram_message
 import logging
 from logging_utils import configure_logging
@@ -102,16 +105,16 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0, max_moves=500):
     # Allow game length capping
     maxed_out = False
 
-    for _ in range(num_games):
-        logger.info("🕹️ Starting game %s/%s", _ + 1, num_games)
+    for game_idx in range(num_games):
+        logger.info("🕹️ Starting game %s/%s", game_idx + 1, num_games)
         # Telegram notification for each game start
         try:
-            send_telegram_message(f"🕹️ Game {_+1}/{num_games} starting now.")
+            send_telegram_message(f"🕹️ Game {game_idx+1}/{num_games} starting now.")
         except Exception:
             logger.error("⚠️ Telegram send failed for game start.")
         # TensorFlow log for game start
         with tf_writer.as_default():
-            tf.summary.scalar("SelfPlay/GameStart", 1, step=_+1)
+            tf.summary.scalar("SelfPlay/GameStart", 1, step=game_idx + 1)
         tf_writer.flush()
         logger.debug("⏳ Game initialization complete — entering move loop")
         gs = GameState()
@@ -128,8 +131,18 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0, max_moves=500):
             board_np = np.expand_dims(np.array(encoded, dtype=np.float32), 0)  # shape [1,12,8,8]
             board_tensor = torch.from_numpy(board_np).to(device)
             with torch.no_grad():
-                policy_logits, _ = model(board_tensor)
+                policy_logits, value_logits = model(board_tensor)
             policy = torch.softmax(policy_logits.squeeze(), dim=0).detach().cpu().numpy()
+
+            # Add Dirichlet exploration noise
+            noise = np.random.dirichlet([ALPHA] * policy.shape[0])
+            policy = (1 - EPSILON) * policy + EPSILON * noise
+            # Log policy distribution stats
+            entropy = -np.sum(policy * np.log(policy + 1e-8))
+            logger.debug("Policy entropy: %.4f (mean prob: %.4f)", entropy, policy.mean())
+            with tf_writer.as_default():
+                tf.summary.scalar("SelfPlay/PolicyEntropy", float(entropy), step=game_idx + 1)
+            tf_writer.flush()
 
             legal_indices = [encode_move(m.startRow, m.startCol, m.endRow, m.endCol) for m in valid_moves]
             legal_probs = [policy[i] if i < len(policy) else 0 for i in legal_indices]
@@ -141,12 +154,18 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0, max_moves=500):
                 normalized = [w / total_weight for w in legal_probs]
                 move = random.choices(valid_moves, weights=normalized, k=1)[0]
 
+            # Optionally log top-3 move probabilities
+            top_idxs = np.argsort(policy)[-3:][::-1]
+            logger.debug("Top moves indices: %s with probs %s", top_idxs.tolist(), policy[top_idxs].tolist())
+
             move_index = encode_move(move.startRow, move.startCol, move.endRow, move.endCol)
             game_data.append((encode_board(gs.board), move_index))
             if len(game_data) % 10 == 0:
                 logger.debug("♟️ Played %s moves so far...", len(game_data))
             gs.makeMove(move)
             move_count += 1
+
+            # # (Future: Batched inference, board symmetries, etc. can be inserted here)
 
             # enforce move limit
             if move_count >= max_moves:
@@ -185,10 +204,10 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0, max_moves=500):
             result_reason = "Material difference"
         # TensorFlow log for moves and outcome
         with tf_writer.as_default():
-            tf.summary.scalar("SelfPlay/MovesPerGame", move_count, step=_+1)
-            tf.summary.scalar("SelfPlay/Outcome", outcome, step=_+1)
+            tf.summary.scalar("SelfPlay/MovesPerGame", move_count, step=game_idx + 1)
+            tf.summary.scalar("SelfPlay/Outcome", outcome, step=game_idx + 1)
         tf_writer.flush()
-        logger.info("🧠 Logged moves and outcome for game %s to TensorBoard", _+1)
+        logger.info("🧠 Logged moves and outcome for game %s to TensorBoard", game_idx + 1)
         for state, move in game_data:
             data.append((state, move, outcome))
         message = f"🏁 Game finished — {result_reason}. Moves: {len(game_data)} | Outcome: {outcome}"
@@ -212,7 +231,7 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0, max_moves=500):
         else:
             logger.warning("⚠️ No game data generated to report.")
         logger.debug("🧠 RAM usage: %s%%", psutil.virtual_memory().percent)
-        logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", _ + 1, len(game_data), outcome)
+        logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", game_idx + 1, len(game_data), outcome)
         if torch.cuda.is_available():
             logger.debug("💾 VRAM: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
 

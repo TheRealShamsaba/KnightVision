@@ -100,6 +100,13 @@ class ChessPGNDataset(Dataset):
         from_square = move.from_square
         to_square = move.to_square
         return from_square * 64 + to_square
+
+    def extend(self, new_records):
+        """
+        Extend dataset with additional self-play records.
+        new_records: list of (board_tensor, move_index, outcome) tuples.
+        """
+        self.additional_data.extend(new_records)
 from model import ChessNet
 
 torch.backends.cuda.matmul.allow_tf32 = True

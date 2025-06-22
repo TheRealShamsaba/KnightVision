@@ -70,6 +70,22 @@ class ChessDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx]
 
+    def extend(self, games):
+        """
+        Extend the dataset with additional self-play games.
+        Each game should be a dict with 'fen' and 'move' keys.
+        """
+        for game in games:
+            fen = game['fen']
+            move = game['move']
+            if move not in self.move_to_idx:
+                idx = len(self.move_to_idx)
+                self.move_to_idx[move] = idx
+                self.idx_to_move[idx] = move
+            board_tensor = self.fen_to_tensor(fen)
+            move_idx = self.move_to_idx[move]
+            self.data.append((board_tensor, move_idx))
+
 
 def create_dataloaders(
     jsonl_path, batch_size=64, val_split=0.1, max_games=None,
@@ -95,3 +111,6 @@ def create_dataloaders(
     )
     
     return train_loader, val_loader, dataset.move_to_idx
+
+# Alias for compatibility
+ChessPGNDataset = ChessDataset
