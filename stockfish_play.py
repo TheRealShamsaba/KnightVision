@@ -3,8 +3,7 @@ import chess
 import chess.engine
 import torch
 from model import ChessNet
-from ai import encode_board
-from ai import decode_move_index
+from ai import encode_board, decode_move_index
 
 def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,25 +28,35 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
 
             while not board.is_game_over() and move_count < max_moves:
                 if board.turn == ai_color:
-                    if not isinstance(board, chess.Board):
-                        raise ValueError(f"Expected chess.Board, got {type(board)}")
+                    # AI's turn: encode board and get network logits
                     encoded = encode_board(board)
                     board_tensor = torch.tensor([encoded], dtype=torch.float32).to(device)
-                    with torch.no_grad():
-                        policy_logits, _ = model(board_tensor)
-                        move_idx = torch.argmax(policy_logits, dim=1).item()
-
-                    start_row, start_col, end_row, end_col = decode_move_index(move_idx)
-                    move = chess.Move.from_uci(f"{chr(start_col + 97)}{8 - start_row}{chr(end_col + 97)}{8 - end_row}")
                     
-                    # Collect legal moves into a list to guarantee iteration
-                    legal_moves = list(board.legal_moves)
-                    if move not in legal_moves:
-                        print(f"⚠️ Illegal move predicted: {move}. Falling back to engine.")
-                        result = engine.play(board, chess.engine.Limit(time=0.01))
-                        board.push(result.move)
-                    else:
-                        board.push(move)
+                    with torch.no_grad():
+                        logits, _ = model(board_tensor)  # shape [1, 4096]
+                        # Build a mask of legal move indices
+                        legal = list(board.legal_moves)
+                        mask = torch.zeros_like(logits)  # same shape [1,4096]
+                        for m in legal:
+                            u = m.uci()
+                            sc = ord(u[0]) - ord('a'); sr = 8 - int(u[1])
+                            ec = ord(u[2]) - ord('a'); er = 8 - int(u[3])
+                            from_idx = sr * 8 + sc
+                            to_idx   = er * 8 + ec
+                            idx = from_idx * 64 + to_idx
+                            mask[0, idx] = 1
+                        
+                        if mask.sum() == 0:
+                            # no legal moves: fall back
+                            result = engine.play(board, chess.engine.Limit(time=0.01))
+                            board.push(result.move)
+                        else:
+                            # only consider legal logits
+                            filtered = logits.masked_fill(mask == 0, float('-inf'))
+                            move_idx = torch.argmax(filtered, dim=1).item()
+                            sr, sc, er, ec = decode_move_index(move_idx)
+                            move = chess.Move.from_uci(f"{chr(sc+97)}{8-sr}{chr(ec+97)}{8-er}")
+                            board.push(move)
                 else:
                     result = engine.play(board, chess.engine.Limit(time=0.1))
                     board.push(result.move)
