@@ -1,13 +1,9 @@
-
-from utils import decode_move  # Ensure this exists and matches your encoding logic
-
-
-
+from ai import decode_move_index  # Uses shared decode logic
 import chess
 import chess.engine
 import torch
 from model import ChessNet
-from utils import encode_board  # Adjust import if needed
+from ai import encode_board, decode_move_index
 import numpy as np
 
 def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
@@ -38,7 +34,8 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                     policy_logits, _ = model(board_tensor)
                     move_idx = torch.argmax(policy_logits, dim=1).item()
 
-                move = decode_move(move_idx, board)  # You need this function based on your move encoding
+                start_row, start_col, end_row, end_col = decode_move_index(move_idx)
+                move = chess.Move.from_uci(f"{chr(start_col + 97)}{8 - start_row}{chr(end_col + 97)}{8 - end_row}")
                 if move not in board.legal_moves:
                     print(f"⚠️ Illegal move predicted: {move}. Using fallback.")
                     move = list(board.legal_moves)[0]
