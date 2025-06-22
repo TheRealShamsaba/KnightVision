@@ -6,6 +6,12 @@ from telegram_utils import send_telegram_message
 import logging
 from logging_utils import configure_logging
 from ai import encode_board
+import datetime
+import tensorflow as tf
+# set up TensorFlow log directory for self-play
+SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
+tf_writer = tf.summary.create_file_writer(SELFPLAY_LOG_DIR)
 configure_logging()
 logger = logging.getLogger(__name__)
 logger.info("Self-play script loaded...")
@@ -60,11 +66,20 @@ model.eval()
 def self_play(model, num_games=100, device=None, sleep_time=0.0):
     print("✅ self_play() function has started executing", flush=True)
 
+    # ensure we have a valid device
+    if device is None:
+        import torch
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     data = []
+    # move model parameters to float and to the correct device
+    model = model.float().to(device)
     model.eval()
-    model.to(device)
-    model = model.float()
     logger.info(f"🧠 Model moved to device: {device}")
+    # log start of self-play to TensorBoard
+    with tf_writer.as_default():
+        tf.summary.scalar("SelfPlay/NumGames", num_games, step=0)
+    tf_writer.flush()
     try:
         send_telegram_message(f"🤖 Starting self-play with {num_games} games...")
     except Exception as e:
@@ -84,6 +99,15 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
 
     for _ in range(num_games):
         logger.info("🕹️ Starting game %s/%s", _ + 1, num_games)
+        # Telegram notification for each game start
+        try:
+            send_telegram_message(f"🕹️ Game {_+1}/{num_games} starting now.")
+        except Exception:
+            logger.error("⚠️ Telegram send failed for game start.")
+        # TensorFlow log for game start
+        with tf_writer.as_default():
+            tf.summary.scalar("SelfPlay/GameStart", 1, step=_+1)
+        tf_writer.flush()
         logger.debug("⏳ Game initialization complete — entering move loop")
         gs = GameState()
         game_data = []
@@ -147,6 +171,12 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
             else:
                 outcome = (white_material - black_material) / max(white_material, black_material)
             result_reason = "Material difference"
+        # TensorFlow log for moves and outcome
+        with tf_writer.as_default():
+            tf.summary.scalar("SelfPlay/MovesPerGame", move_count, step=_+1)
+            tf.summary.scalar("SelfPlay/Outcome", outcome, step=_+1)
+        tf_writer.flush()
+        logger.info("🧠 Logged moves and outcome for game %s to TensorBoard", _+1)
         for state, move in game_data:
             data.append((state, move, outcome))
         message = f"🏁 Game finished — {result_reason}. Moves: {len(game_data)} | Outcome: {outcome}"
@@ -173,6 +203,12 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
         logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", _ + 1, len(game_data), outcome)
         if torch.cuda.is_available():
             logger.debug("💾 VRAM: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
+
+    logger.info("✅ Completed all self-play games: %s/%s", num_games, num_games)
+    try:
+        send_telegram_message(f"🏁 All {num_games} self-play games completed and logged to {SELFPLAY_LOG_DIR}.")
+    except Exception:
+        logger.error("⚠️ Telegram send failed for completion notice.")
 
     return data
 

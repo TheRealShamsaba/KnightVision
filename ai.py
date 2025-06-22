@@ -1,5 +1,6 @@
 import chess
 import os
+from typing import Union, List
 if "COLAB_GPU" in os.environ:
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
 else:
@@ -14,37 +15,34 @@ PIECE_TO_INDEX = {
 
 INDEX_TO_PIECE = { v:k for k, v in PIECE_TO_INDEX.items()}
 
-def encode_board(board):
-    """
-    Encodes a python-chess board into a (12, 8, 8) tensor.
-    Each of the 12 channels represents a piece type.
-    """
-    # Handle custom board representation as a list of lists of piece codes
-    if isinstance(board, list):
-        encoded = np.zeros((12, 8, 8), dtype=np.float32)
-        for row in range(8):
-            for col in range(8):
-                piece = board[row][col]
-                if piece and piece in PIECE_TO_INDEX:
-                    encoded[PIECE_TO_INDEX[piece], row, col] = 1.0
+# Precompute row, col for each square
+SQUARE_TO_RC = {sq: (7 - sq // 8, sq % 8) for sq in chess.SQUARES}
+
+def encode_board(board: Union[chess.Board, List[List[str]], np.ndarray]) -> np.ndarray:
+    # Initialize empty board tensor
+    encoded = np.zeros((12, 8, 8), dtype=np.float32)
+
+    # If a nested list or ndarray is passed, convert to python-chess Board
+    if isinstance(board, (list, np.ndarray)):
+        # Expect board representation as codes matching PIECE_TO_INDEX
+        arr = np.array(board)
+        for row, col in zip(*np.nonzero(arr)):
+            key = arr[row, col]
+            idx = PIECE_TO_INDEX.get(key)
+            if idx is not None:
+                encoded[idx, row, col] = 1.0
         return encoded
-    else:
-        encoded = np.zeros((12, 8, 8), dtype=np.float32)
-        for square in chess.SQUARES:
-            piece = board.piece_at(square)
-            if piece:
-                row = 7 - (square // 8)  # Flip the row for correct perspective
-                col = square % 8
-                color = 'w' if piece.color == chess.WHITE else 'b'
-                # Map pawns to lowercase 'p' and other pieces to their uppercase symbol
-                if piece.piece_type == chess.PAWN:
-                    letter = 'p'
-                else:
-                    letter = piece.symbol().upper()
-                key = f"{color}{letter}"
-                # direct assignment (mapping always valid)
-                encoded[PIECE_TO_INDEX[key], row, col] = 1.0
-        return encoded
+
+    # Otherwise assume a python-chess Board
+    for square, piece in board.piece_map().items():
+        idx_color = 'w' if piece.color == chess.WHITE else 'b'
+        letter = 'p' if piece.piece_type == chess.PAWN else piece.symbol().upper()
+        key = f"{idx_color}{letter}"
+        idx = PIECE_TO_INDEX[key]
+        row, col = SQUARE_TO_RC[square]
+        encoded[idx, row, col] = 1.0
+
+    return encoded
 
 def decode_move_index(index):
     """
