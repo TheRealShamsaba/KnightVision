@@ -14,13 +14,21 @@ INDEX_TO_PIECE = { v:k for k, v in PIECE_TO_INDEX.items()}
 
 def encode_board(board):
     """
-    Optimized: Encodes the 8x8 board into a (12, 8, 8) tensor (channel per piece type).
+    Encodes a python-chess board into a (12, 8, 8) tensor.
+    Each of the 12 channels represents a piece type.
     """
+    import chess
+
     encoded = np.zeros((12, 8, 8), dtype=np.float32)
-    for r, row in enumerate(board):
-        for c, square in enumerate(row):
-            if square != "--":
-                encoded[PIECE_TO_INDEX.get(square, 0), r, c] = 1.0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece:
+            row = 7 - (square // 8)  # Flip the row for correct perspective
+            col = square % 8
+            color = 'w' if piece.color == chess.WHITE else 'b'
+            key = f"{color}{piece.symbol().upper()}"
+            if key in PIECE_TO_INDEX:
+                encoded[PIECE_TO_INDEX[key], row, col] = 1.0
     return encoded
 
 def decode_move_index(index):
