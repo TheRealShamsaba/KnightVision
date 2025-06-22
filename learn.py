@@ -55,6 +55,7 @@ from model import ChessNet
 import torch
 import torch.optim as optim
 import os
+from stockfish_play import play_vs_stockfish
 
 # === Training entry point ===
 def main_train():
@@ -564,6 +565,16 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         print("📨 Sent message:", msg_summary)
     # Backup final model
     torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "final_model.pth"))
+
+    # === Evaluate vs Stockfish and notify Telegram ===
+    try:
+        send_telegram_message("🧠 Evaluating model against Stockfish...")
+        play_vs_stockfish(model)
+        send_telegram_message("✅ Evaluation vs Stockfish completed.")
+    except Exception as e:
+        logger.error(f"❌ Stockfish evaluation failed: {e}")
+        send_telegram_message(f"❌ Stockfish evaluation failed: {e}")
+
     logger.info(f"🕒 Total training time: {format_duration(total_duration)}")
     logger.info("✅ Reinforcement learning complete.")
     sys.stdout.flush()

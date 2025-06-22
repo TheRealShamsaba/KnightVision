@@ -63,6 +63,7 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
     model.eval()
     model.to(device)
     model = model.float()
+    logger.info(f"🧠 Model moved to device: {device}")
     try:
         send_telegram_message(f"🤖 Starting self-play with {num_games} games...")
     except Exception as e:
@@ -74,11 +75,11 @@ def self_play(model, num_games=100, device=None, sleep_time=0.0):
     except Exception as e:
         logger.error("⚠️ Telegram send failed: %s", e)
     # Determine optional sleep duration between moves
-    if sleep_ms is None:
+    if sleep_time is None:
         try:
-            sleep_ms = float(os.getenv("SELFPLAY_SLEEP_MS", "0"))
+            sleep_time = float(os.getenv("SELFPLAY_SLEEP_MS", "0"))
         except ValueError:
-            sleep_ms = 0
+            sleep_time = 0
 
     for _ in range(num_games):
         logger.info("🕹️ Starting game %s/%s", _ + 1, num_games)

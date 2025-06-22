@@ -1,0 +1,64 @@
+
+from utils import decode_move  # Ensure this exists and matches your encoding logic
+
+
+
+import chess
+import chess.engine
+import torch
+from model import ChessNet
+from utils import encode_board  # Adjust import if needed
+import numpy as np
+
+def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.eval()
+
+    if device.type != "cuda":
+        print("⚠️ WARNING: Running on CPU — Stockfish eval will be slower.")
+
+    engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+    engine.configure({"Skill Level": skill_level})
+
+    results = {"win": 0, "loss": 0, "draw": 0}
+
+    for game_num in range(num_games):
+        print(f"🎮 Starting Game {game_num + 1}/{num_games}")
+        board = chess.Board()
+        move_count = 0
+
+        # Alternate starting color
+        ai_color = chess.WHITE if game_num % 2 == 0 else chess.BLACK
+
+        while not board.is_game_over() and move_count < max_moves:
+            if board.turn == ai_color:
+                encoded = encode_board(board)  # Shape: (12, 8, 8)
+                board_tensor = torch.tensor(np.array([encoded]), dtype=torch.float32).to(device)
+                with torch.no_grad():
+                    policy_logits, _ = model(board_tensor)
+                    move_idx = torch.argmax(policy_logits, dim=1).item()
+
+                move = decode_move(move_idx, board)  # You need this function based on your move encoding
+                if move not in board.legal_moves:
+                    print(f"⚠️ Illegal move predicted: {move}. Using fallback.")
+                    move = list(board.legal_moves)[0]
+                board.push(move)
+            else:
+                result = engine.play(board, chess.engine.Limit(time=0.1))
+                board.push(result.move)
+
+            move_count += 1
+
+        outcome = board.result()
+        print(f"🧾 Game Result: {outcome}")
+        if outcome == "1-0":
+            results["win" if ai_color == chess.WHITE else "loss"] += 1
+        elif outcome == "0-1":
+            results["loss" if ai_color == chess.WHITE else "win"] += 1
+        else:
+            results["draw"] += 1
+
+    engine.quit()
+    print("✅ Finished Stockfish Evaluation")
+    print("Summary:", results)
+    return results
