@@ -19,22 +19,32 @@ def encode_board(board):
     Encodes a python-chess board into a (12, 8, 8) tensor.
     Each of the 12 channels represents a piece type.
     """
-    encoded = np.zeros((12, 8, 8), dtype=np.float32)
-    for square in chess.SQUARES:
-        piece = board.piece_at(square)
-        if piece:
-            row = 7 - (square // 8)  # Flip the row for correct perspective
-            col = square % 8
-            color = 'w' if piece.color == chess.WHITE else 'b'
-            # Map pawns to lowercase 'p' and other pieces to their uppercase symbol
-            if piece.piece_type == chess.PAWN:
-                letter = 'p'
-            else:
-                letter = piece.symbol().upper()
-            key = f"{color}{letter}"
-            # direct assignment (mapping always valid)
-            encoded[PIECE_TO_INDEX[key], row, col] = 1.0
-    return encoded
+    # Handle custom board representation as a list of lists of piece codes
+    if isinstance(board, list):
+        encoded = np.zeros((12, 8, 8), dtype=np.float32)
+        for row in range(8):
+            for col in range(8):
+                piece = board[row][col]
+                if piece and piece in PIECE_TO_INDEX:
+                    encoded[PIECE_TO_INDEX[piece], row, col] = 1.0
+        return encoded
+    else:
+        encoded = np.zeros((12, 8, 8), dtype=np.float32)
+        for square in chess.SQUARES:
+            piece = board.piece_at(square)
+            if piece:
+                row = 7 - (square // 8)  # Flip the row for correct perspective
+                col = square % 8
+                color = 'w' if piece.color == chess.WHITE else 'b'
+                # Map pawns to lowercase 'p' and other pieces to their uppercase symbol
+                if piece.piece_type == chess.PAWN:
+                    letter = 'p'
+                else:
+                    letter = piece.symbol().upper()
+                key = f"{color}{letter}"
+                # direct assignment (mapping always valid)
+                encoded[PIECE_TO_INDEX[key], row, col] = 1.0
+        return encoded
 
 def decode_move_index(index):
     """
