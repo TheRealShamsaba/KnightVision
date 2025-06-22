@@ -17,8 +17,6 @@ def encode_board(board):
     Encodes a python-chess board into a (12, 8, 8) tensor.
     Each of the 12 channels represents a piece type.
     """
-    import chess
-
     encoded = np.zeros((12, 8, 8), dtype=np.float32)
     for square in chess.SQUARES:
         piece = board.piece_at(square)
