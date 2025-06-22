@@ -45,3 +45,5 @@ def encode_move(start_row, start_col, end_row, end_col):
     start = start_row * 8 + start_col
     end = end_row * 8 + end_col
     return start * 64 + end
+
+__all__ = ["encode_board", "decode_move_index", "encode_move"]

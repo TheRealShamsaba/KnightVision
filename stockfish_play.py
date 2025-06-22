@@ -43,7 +43,7 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                     move = chess.Move.from_uci(f"{chr(start_col + 97)}{8 - start_row}{chr(end_col + 97)}{8 - end_row}")
                     if move not in board.legal_moves:
                         print(f"⚠️ Illegal move predicted: {move}. Using fallback.")
-                        move = next(board.legal_moves)
+                        move = next(iter(board.legal_moves))
                     board.push(move)
                 else:
                     result = engine.play(board, chess.engine.Limit(time=0.1))
