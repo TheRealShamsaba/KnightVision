@@ -40,8 +40,9 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                     start_row, start_col, end_row, end_col = decode_move_index(move_idx)
                     move = chess.Move.from_uci(f"{chr(start_col + 97)}{8 - start_row}{chr(end_col + 97)}{8 - end_row}")
                     
-                    # If the AI predicts an illegal move, fall back to Stockfish for a legal move
-                    if move not in board.legal_moves:
+                    # Collect legal moves into a list to guarantee iteration
+                    legal_moves = list(board.legal_moves)
+                    if move not in legal_moves:
                         print(f"⚠️ Illegal move predicted: {move}. Falling back to engine.")
                         result = engine.play(board, chess.engine.Limit(time=0.01))
                         board.push(result.move)
