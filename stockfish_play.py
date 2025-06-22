@@ -26,14 +26,13 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
             board = chess.Board()
             move_count = 0
 
-            # Alternate starting color
             ai_color = chess.WHITE if game_num % 2 == 0 else chess.BLACK
 
             while not board.is_game_over() and move_count < max_moves:
                 if board.turn == ai_color:
                     if not isinstance(board, chess.Board):
                         raise ValueError(f"Expected chess.Board, got {type(board)}")
-                    encoded = encode_board(board)  # Shape: (12, 8, 8)
+                    encoded = encode_board(board)
                     board_tensor = torch.tensor(np.array([encoded]), dtype=torch.float32).to(device)
                     with torch.no_grad():
                         policy_logits, _ = model(board_tensor)
@@ -41,10 +40,11 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
 
                     start_row, start_col, end_row, end_col = decode_move_index(move_idx)
                     move = chess.Move.from_uci(f"{chr(start_col + 97)}{8 - start_row}{chr(end_col + 97)}{8 - end_row}")
-                    legal_moves_list = list(board.legal_moves)
-                    if move not in legal_moves_list:
+                    
+                    legal_moves = list(board.legal_moves)
+                    if move not in legal_moves:
                         print(f"⚠️ Illegal move predicted: {move}. Using fallback.")
-                        move = legal_moves_list[0] if legal_moves_list else None
+                        move = legal_moves[0] if legal_moves else None
                         if move is None:
                             print("❌ No legal fallback move available. Ending game.")
                             break
