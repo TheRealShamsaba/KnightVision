@@ -1,3 +1,4 @@
+import chess
 import os
 if "COLAB_GPU" in os.environ:
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
