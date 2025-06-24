@@ -246,24 +246,29 @@ def train_model(model, train_dataset, val_dataset, optimizer, start_epoch=0, epo
     from torch.cuda.amp import GradScaler
     scaler = GradScaler()
 
-    # Create DataLoaders from provided datasets
+    # Build DataLoader kwargs conditionally
+    loader_kwargs = {
+        "batch_size": batch_size,
+        "pin_memory": pin_memory,
+        "num_workers": num_workers,
+    }
     train_loader = DataLoader(
         train_dataset,
-        batch_size=batch_size,
         shuffle=True,
-        pin_memory=pin_memory,
-        num_workers=num_workers,
-        persistent_workers=True,
-        prefetch_factor=2
+        **(
+            {"persistent_workers": True, "prefetch_factor": 2}
+            if num_workers > 0 else {}
+        ),
+        **loader_kwargs,
     )
     val_loader = DataLoader(
         val_dataset,
-        batch_size=batch_size,
         shuffle=False,
-        pin_memory=pin_memory,
-        num_workers=num_workers,
-        persistent_workers=True,
-        prefetch_factor=2
+        **(
+            {"persistent_workers": True, "prefetch_factor": 2}
+            if num_workers > 0 else {}
+        ),
+        **loader_kwargs,
     )
     print(f"✅ DataLoaders created: {len(train_dataset)} train, {len(val_dataset)} val samples")
     dataloader = train_loader
@@ -405,14 +410,19 @@ def train_model(model, train_dataset, val_dataset, optimizer, start_epoch=0, epo
 
         if new_selfplay_data and hasattr(dataset, "extend"):
             dataset.extend(new_selfplay_data)
+            loader_kwargs = {
+                "batch_size": batch_size,
+                "pin_memory": pin_memory,
+                "num_workers": num_workers,
+            }
             dataloader = DataLoader(
                 dataset,
-                batch_size=batch_size,
                 shuffle=True,
-                pin_memory=pin_memory,
-                num_workers=num_workers,
-                persistent_workers=True,
-                prefetch_factor=2
+                **(
+                    {"persistent_workers": True, "prefetch_factor": 2}
+                    if num_workers > 0 else {}
+                ),
+                **loader_kwargs,
             )
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
         elif new_selfplay_data:
