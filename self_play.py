@@ -336,8 +336,8 @@ def piece_value(piece):
     return values.get(piece.upper(), 0)
 
 
-def generate_self_play_data(model, num_games, device, sleep_time, max_moves=None):
-    return self_play(model, num_games, device, sleep_time, max_moves=max_moves)
+def generate_self_play_data(num_games, sleep_time=0.0, max_moves=None):
+    return self_play(num_games=num_games, sleep_time=sleep_time, max_moves=max_moves)
 
 if __name__ == "__main__":
     import argparse
