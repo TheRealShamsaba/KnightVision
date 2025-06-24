@@ -49,7 +49,7 @@ def _init_worker(model_path, device_str, seed):
     device = torch.device(device_str)
     # Check if model_path exists; if not, try fallback
     if not os.path.exists(model_path):
-        fallback = os.path.join(os.getenv("BASE_DIR", ""), "checkpoints", "model.pth")
+        fallback = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints", "model_latest.pth")
         if os.path.exists(fallback):
             model_path = fallback
         else:
