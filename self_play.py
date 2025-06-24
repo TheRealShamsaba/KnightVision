@@ -336,7 +336,15 @@ def piece_value(piece):
     return values.get(piece.upper(), 0)
 
 
-def generate_self_play_data(num_games, sleep_time=0.0, max_moves=None):
+def generate_self_play_data(*args, **kwargs):
+    # Support calls like generate_self_play_data(model, num_games, device, sleep_time, max_moves)
+    num_games = kwargs.get('num_games')
+    if num_games is None and len(args) >= 2:
+        num_games = args[1]
+    elif num_games is None and len(args) >= 1:
+        num_games = args[0]
+    sleep_time = kwargs.get('sleep_time', 0.0)
+    max_moves = kwargs.get('max_moves', None)
     return self_play(num_games=num_games, sleep_time=sleep_time, max_moves=max_moves)
 
 if __name__ == "__main__":
