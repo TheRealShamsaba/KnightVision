@@ -406,7 +406,8 @@ def train_model(model, train_dataset, val_dataset, optimizer, start_epoch=0, epo
         # ♟️ Self-play after each epoch
         print("♟️ Generating self-play games...")
         num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", 50))
-        new_selfplay_data = generate_self_play_data(model=model, num_games=num_selfplay_games)
+        # positional arguments for generate_self_play_data
+        new_selfplay_data = generate_self_play_data(model, num_selfplay_games)
 
         if new_selfplay_data and hasattr(dataset, "extend"):
             dataset.extend(new_selfplay_data)
