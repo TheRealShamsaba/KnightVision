@@ -3,6 +3,7 @@ import sys
 import multiprocessing as mp
 import json
 import torch
+import torch.utils.data
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 import logging
@@ -615,13 +616,22 @@ def main():
     # === Initialize model and training components ===
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ChessNet().to(device)
+
+    # === Initialize dataset and split into train/val ===
     dataset = ChessPGNDataset(games_path, max_samples=100000)
+    # split into train/validation sets (90/10)
+    train_size = int(len(dataset) * 0.9)
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+
+    # === Initialize optimizer ===
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-    # === Train the model ===
+    # === Train the model with validation ===
     train_model(
         model,
-        dataset,
+        train_dataset,
+        val_dataset,
         optimizer=optimizer,
         start_epoch=0,
         epochs=10000,
