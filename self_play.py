@@ -1,9 +1,9 @@
-# self_play.py
-# self_play.py
 import os
 import time
 import numpy as np
 import multiprocessing as mp
+# Ensure BASE_DIR is defined for all module contexts
+BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # Force 'fork' start method for multiprocessing (important for PyTorch and avoiding heavy import re-execution)
 if mp.get_start_method(allow_none=True) != 'fork':
     mp.set_start_method('fork', force=True)
@@ -64,8 +64,6 @@ def _init_worker(model_path, device_str, seed):
         torch.cuda.manual_seed_all(seed)
 
 if __name__ == '__main__':
-    # Ensure BASE_DIR is defined before use
-    BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
     # set up TensorFlow log directory for self-play
     SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
     os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
@@ -99,7 +97,7 @@ if __name__ == '__main__':
         logger.info("📦 Not running in Colab — skipping drive.mount")
         from dotenv import load_dotenv
         load_dotenv()
-        BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+        # BASE_DIR is already defined at the top
 
 from chessEngine import GameState
 from ai import encode_move
