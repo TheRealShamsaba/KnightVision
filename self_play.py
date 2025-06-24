@@ -240,8 +240,8 @@ def _run_single_game(game_idx, sleep_time, max_moves):
 
         # # (Future: Batched inference, board symmetries, etc. can be inserted here)
 
-        # enforce move limit
-        if move_count >= max_moves:
+        # enforce move limit (only if a max_moves value was provided)
+        if max_moves is not None and move_count >= max_moves:
             logger.warning(f"⚠️ Max moves reached ({max_moves}); terminating game early.")
             maxed_out = True
             break
