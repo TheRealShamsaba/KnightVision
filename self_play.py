@@ -327,8 +327,10 @@ def self_play(num_games=100, sleep_time=0.0, max_moves=500):
 
     data = []
 
-    # parallel self-play using multiprocessing Pool
-    max_workers = min(num_games, os.cpu_count() or 1)
+    # allow sequential test mode or custom worker count via env
+    SEQUENTIAL = os.getenv("SELFPLAY_SEQ", "0") == "1"
+    WORKERS = int(os.getenv("SELFPLAY_WORKERS", str(min(num_games, os.cpu_count() or 1))))
+
     # point to the latest checkpoint saved by the training loop
     candidate = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints", "model_latest.pth")
     if os.path.exists(candidate):
@@ -336,15 +338,22 @@ def self_play(num_games=100, sleep_time=0.0, max_moves=500):
     else:
         # fallback if training saved a different filename
         model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
-    pool = mp.Pool(
-        processes=max_workers,
-        initializer=_init_worker,
-        initargs=(model_path, device.type, SEED)
-    )
-    tasks = [(idx, sleep_time, max_moves) for idx in range(num_games)]
-    results = pool.starmap(_run_single_game, tasks)
-    pool.close()
-    pool.join()
+
+    # parallel self-play using multiprocessing Pool or sequential mode
+    if SEQUENTIAL or WORKERS <= 1:
+        logger.info("🔁 Running self-play sequentially with %s games", num_games)
+        results = [_run_single_game(idx, sleep_time, max_moves) for idx in range(num_games)]
+    else:
+        logger.info("🔁 Running self-play in parallel with %s workers", WORKERS)
+        pool = mp.Pool(
+            processes=WORKERS,
+            initializer=_init_worker,
+            initargs=(model_path, device.type, SEED)
+        )
+        tasks = [(idx, sleep_time, max_moves) for idx in range(num_games)]
+        results = pool.starmap(_run_single_game, tasks)
+        pool.close()
+        pool.join()
     for idx, game_data in results:
         data.extend(game_data)
 
