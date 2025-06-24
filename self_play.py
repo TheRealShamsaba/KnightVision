@@ -2,6 +2,7 @@ import os
 import time
 import numpy as np
 import multiprocessing as mp
+import glob
 # Ensure BASE_DIR is defined for all module contexts
 BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # Force 'fork' start method for multiprocessing (important for PyTorch and avoiding heavy import re-execution)
@@ -42,24 +43,45 @@ _torch.backends.cudnn.benchmark = False
 # -- process pool initializer for shared model loading --
 _shared_model = None
 def _init_worker(model_path, device_str, seed):
-    import os, random, numpy as np, torch
+    import os, random, numpy as np, torch, glob
     from model import ChessNet
     global _shared_model, device
-    # device setup
+
+    # set device
     device = torch.device(device_str)
-    # Check if model_path exists; if not, try fallback
+
+    # Auto-discover checkpoint if original path missing
     if not os.path.exists(model_path):
-        fallback = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints", "model_latest.pth")
-        if os.path.exists(fallback):
-            model_path = fallback
+        base = os.getenv("BASE_DIR", BASE_DIR)
+        checkpoints_dir = os.path.join(base, "runs", "chess_rl_v2", "checkpoints")
+        found = glob.glob(os.path.join(checkpoints_dir, "*.pth"))
+        if found:
+            model_path = max(found, key=os.path.getmtime)
+            print(f"⚠️ _init_worker: auto-selected checkpoint '{model_path}'")
         else:
-            raise FileNotFoundError(f"Model checkpoint not found at {model_path} or {fallback}")
-    # load model
+            fallback = os.path.join(base, "checkpoints", "model.pth")
+            if os.path.exists(fallback):
+                model_path = fallback
+                print(f"⚠️ _init_worker: using fallback checkpoint '{model_path}'")
+            else:
+                try:
+                    contents = os.listdir(checkpoints_dir)
+                except Exception:
+                    contents = []
+                raise FileNotFoundError(
+                    f"❌ No model found!\n"
+                    f"  Tried original path: {model_path}\n"
+                    f"  Tried fallback     : {fallback}\n"
+                    f"  {checkpoints_dir} contains: {contents}"
+                )
+
+    # load and prepare model
     m = ChessNet().to(device)
     m.load_state_dict(torch.load(model_path, map_location=device))
     m.eval()
     _shared_model = m
-    # reseed RNGs
+
+    # reseed RNGs for reproducibility
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
