@@ -1,8 +1,12 @@
 # self_play.py
+# self_play.py
 import os
 import time
 import numpy as np
 import multiprocessing as mp
+# Force 'fork' start method for multiprocessing (important for PyTorch and avoiding heavy import re-execution)
+if mp.get_start_method(allow_none=True) != 'fork':
+    mp.set_start_method('fork', force=True)
 # Dirichlet noise parameters
 EPSILON = float(os.getenv("DIR_NOISE_EPS", "0.25"))
 ALPHA = float(os.getenv("DIR_NOISE_ALPHA", "0.3"))
@@ -59,42 +63,43 @@ def _init_worker(model_path, device_str, seed):
     if device.type == "cuda":
         torch.cuda.manual_seed_all(seed)
 
-# Ensure BASE_DIR is defined before use
-BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-# set up TensorFlow log directory for self-play
-SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
-os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
-tf_writer = tf.summary.create_file_writer(SELFPLAY_LOG_DIR)
-configure_logging()
-logger = logging.getLogger(__name__)
-logger.info("Self-play script loaded...")
-logger.info("✅ Telegram test message dispatched.")
-logger.info("📋 Note: All Telegram messages will log their intent before sending.")
-
-try:
-    send_telegram_message("📥 self_play.py loaded successfully.")
-except Exception as e:
-    logger.error("⚠️ Telegram send failed: %s", e)
-
-try:
-    import google.colab
-    IN_COLAB = True
-except ImportError:
-    IN_COLAB = False
-
-if IN_COLAB:
-    try:
-        from google.colab import drive
-        drive.mount("/content/drive", force_remount=True)
-        BASE_DIR = "/content/drive/MyDrive/KnightVision"
-    except Exception as e:
-        logger.error("⚠️ Colab drive mount failed: %s", e)
-        BASE_DIR = os.getenv("BASE_DIR", "/content/drive/MyDrive/KnightVision")
-else:
-    logger.info("📦 Not running in Colab — skipping drive.mount")
-    from dotenv import load_dotenv
-    load_dotenv()
+if __name__ == '__main__':
+    # Ensure BASE_DIR is defined before use
     BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+    # set up TensorFlow log directory for self-play
+    SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+    os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
+    tf_writer = tf.summary.create_file_writer(SELFPLAY_LOG_DIR)
+    configure_logging()
+    logger = logging.getLogger(__name__)
+    logger.info("Self-play script loaded...")
+    logger.info("✅ Telegram test message dispatched.")
+    logger.info("📋 Note: All Telegram messages will log their intent before sending.")
+
+    try:
+        send_telegram_message("📥 self_play.py loaded successfully.")
+    except Exception as e:
+        logger.error("⚠️ Telegram send failed: %s", e)
+
+    try:
+        import google.colab
+        IN_COLAB = True
+    except ImportError:
+        IN_COLAB = False
+
+    if IN_COLAB:
+        try:
+            from google.colab import drive
+            drive.mount("/content/drive", force_remount=True)
+            BASE_DIR = "/content/drive/MyDrive/KnightVision"
+        except Exception as e:
+            logger.error("⚠️ Colab drive mount failed: %s", e)
+            BASE_DIR = os.getenv("BASE_DIR", "/content/drive/MyDrive/KnightVision")
+    else:
+        logger.info("📦 Not running in Colab — skipping drive.mount")
+        from dotenv import load_dotenv
+        load_dotenv()
+        BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from chessEngine import GameState
 from ai import encode_move
@@ -104,16 +109,17 @@ import logging
 from model import ChessNet
 import psutil
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-logger.info("🖥️ Using device: %s", device)
+if __name__ == '__main__':
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info("🖥️ Using device: %s", device)
 
-if torch.cuda.is_available():
-    logger.info("💾 VRAM used: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
+    if torch.cuda.is_available():
+        logger.info("💾 VRAM used: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
 
-logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
 
-model = ChessNet().to(device)
-model.eval()
+    model = ChessNet().to(device)
+    model.eval()
 
 
 def _run_single_game(game_idx, sleep_time, max_moves):
@@ -368,6 +374,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     configure_logging(args.log_level)
 
+    # (Re-)initialize model and device in main block only
     model = ChessNet()
     model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
     if not os.path.exists(model_path):
