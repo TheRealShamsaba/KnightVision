@@ -22,6 +22,11 @@ import datetime
 import tensorflow as tf
 import torch
 
+# --- TensorBoard writer for self-play (available in workers) ---
+SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
+tf_writer = tf.summary.create_file_writer(SELFPLAY_LOG_DIR)
+
 # global device for self-play
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -92,10 +97,7 @@ def _init_worker(model_path, device_str, seed):
         torch.cuda.manual_seed_all(seed)
 
 if __name__ == '__main__':
-    # set up TensorFlow log directory for self-play
-    SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
-    os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
-    tf_writer = tf.summary.create_file_writer(SELFPLAY_LOG_DIR)
+    # TensorBoard writer is now defined at module scope (see above)
     configure_logging()
     # logger = logging.getLogger(__name__)  # Already defined at module level
     logger.info("Self-play script loaded...")
