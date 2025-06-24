@@ -18,6 +18,9 @@ import datetime
 import tensorflow as tf
 import torch
 
+# global device for self-play
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 BATCH_SIZE = int(os.getenv("SELFPLAY_BATCH_SIZE", "16"))
 
 # --- reproducibility / seeding for self-play ---
