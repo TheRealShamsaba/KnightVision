@@ -14,6 +14,9 @@ ALPHA = float(os.getenv("DIR_NOISE_ALPHA", "0.3"))
 from telegram_utils import send_telegram_message
 import logging
 from logging_utils import configure_logging
+# initialize module-level logger for both main and worker processes
+configure_logging(os.getenv("LOG_LEVEL", "INFO"))
+logger = logging.getLogger(__name__)
 from ai import encode_board
 import datetime
 import tensorflow as tf
@@ -94,7 +97,7 @@ if __name__ == '__main__':
     os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
     tf_writer = tf.summary.create_file_writer(SELFPLAY_LOG_DIR)
     configure_logging()
-    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)  # Already defined at module level
     logger.info("Self-play script loaded...")
     logger.info("✅ Telegram test message dispatched.")
     logger.info("📋 Note: All Telegram messages will log their intent before sending.")
@@ -139,7 +142,7 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         logger.info("💾 VRAM used: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
 
-    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)  # Already defined at module level
 
     model = ChessNet().to(device)
     model.eval()
