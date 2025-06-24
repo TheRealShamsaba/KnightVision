@@ -4,6 +4,24 @@ import chess.engine
 import torch
 from model import ChessNet
 from ai import encode_board, decode_move_index
+import random
+import numpy as np
+import tensorflow as tf
+import os
+import datetime
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
+tf.random.set_seed(SEED)
+
+# Setup TF summary writer for Stockfish evaluation
+LOG_DIR = os.path.join("runs", "stockfish_eval", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+os.makedirs(LOG_DIR, exist_ok=True)
+tf_writer = tf.summary.create_file_writer(LOG_DIR)
 
 def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish", skill_level=5, max_moves=250):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,6 +35,12 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
     engine.configure({"Skill Level": skill_level})
 
     results = {"win": 0, "loss": 0, "draw": 0}
+
+    # Log initial tallies
+    with tf_writer.as_default():
+        tf.summary.scalar("Stockfish/wins", 0, step=0)
+        tf.summary.scalar("Stockfish/losses", 0, step=0)
+        tf.summary.scalar("Stockfish/draws", 0, step=0)
 
     try:
         for game_num in range(num_games):
@@ -71,8 +95,16 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                 results["loss" if ai_color == chess.WHITE else "win"] += 1
             else:
                 results["draw"] += 1
+
+            # Update TF summary after each game
+            with tf_writer.as_default():
+                tf.summary.scalar("Stockfish/wins", results["win"], step=game_num+1)
+                tf.summary.scalar("Stockfish/losses", results["loss"], step=game_num+1)
+                tf.summary.scalar("Stockfish/draws", results["draw"], step=game_num+1)
+
     finally:
         engine.quit()
+    tf_writer.flush()
     print("✅ Finished Stockfish Evaluation")
     print("Summary:", results)
     return results

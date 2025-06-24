@@ -13,6 +13,19 @@ import psutil
 import time
 import gc
 import tensorflow as tf
+import numpy as np
+
+# --- Reproducibility: fixed global seed ---
+SEED = int(os.getenv("SEED", "42"))
+import random
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
+# Enforce deterministic behavior in cuDNN
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 physical_devices = tf.config.list_physical_devices('GPU')
 for gpu in physical_devices:
     try:
@@ -24,6 +37,9 @@ for gpu in physical_devices:
         print(f"⚠️ Could not enable memory growth for {gpu}: {e}")
         sys.stdout.flush()
         sys.stderr.flush()
+
+# early-stopping configuration
+PATIENCE = 3  # number of iterations without improvement before stopping
 
 
 # === Google Colab Drive Mount ===
@@ -63,32 +79,6 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 games_path = os.path.join(DATA_DIR, "games.jsonl")
 
-# === Training entry point ===
-def main_train():
-    """Set up data and model, then start training."""
-    # === Set up paths and device ===
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
-    checkpoint_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints")
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-# === Model, Dataset, Optimizer ===
-model = ChessNet().to(device)
-dataset = ChessPGNDataset(games_path, max_samples=100000)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
-# === Start Training ===
-train_model(
-    model=model,
-    data=dataset,
-    optimizer=optimizer,
-    start_epoch=0,
-    epochs=10000,
-    batch_size=2048,
-    device=device
-)
 
 
 # Helper to escape unsafe Markdown for Telegram
@@ -158,8 +148,11 @@ def stream_human_data(file_path=os.path.join(DATA_DIR, "games.jsonl"), chunk_siz
         if chunk:
             yield chunk
 
-def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
+def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2, patience=PATIENCE):
     import time
+    # track early-stopping
+    best_loss = float('inf')
+    no_improve_count = 0
     run_id = str(int(time.time()))
     total_start = time.time()
     log_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", run_id)
@@ -521,6 +514,19 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
         sys.stderr.flush()
         # Notify via Telegram after training step and model save
         send_telegram_message("🤖 Training completed successfully and model updated.")
+        # --- early-stopping check ---
+        # use avg_loss from last batch as the metric
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            no_improve_count = 0
+        else:
+            no_improve_count += 1
+            logger.info(f"🛑 No improvement for {no_improve_count}/{patience} iterations")
+            send_telegram_message(f"🛑 No improvement for {no_improve_count}/{patience} iterations")
+            if no_improve_count >= patience:
+                send_telegram_message(f"🛑 Early-stopping: stopping after {patience} iterations without improvement.")
+                logger.info("🛑 Early-stopping triggered")
+                break
         # Prepare self-play data for next iteration or epoch
         if 'next_selfplay_data' in locals() and next_selfplay_data:
             selfplay_data = next_selfplay_data
@@ -586,13 +592,23 @@ def reinforcement_loop(iterations=3, games_per_iter=5, epochs=2):
     sys.stdout.flush()
     sys.stderr.flush()
 
+
 # --- Main entry point for training ---
-
-
 def main():
+    # Set multiprocessing start method and seed for child processes
+    mp.set_start_method("spawn", force=True)
+    # Re-seed in spawned processes
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(SEED)
+
     # === Set up directories and device ===
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
+    DATA_DIR = os.path.join(BASE_DIR, "data")
+    os.makedirs(DATA_DIR, exist_ok=True)
+    games_path = os.path.join(DATA_DIR, "games.jsonl")
     checkpoint_dir = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -615,4 +631,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main_train()
+    main()

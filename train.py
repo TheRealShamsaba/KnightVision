@@ -2,8 +2,37 @@ print("Training script loaded...")
 import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 # Ensure NUM_SELFPLAY_GAMES is set in the environment with a default of "50"
 os.environ["NUM_SELFPLAY_GAMES"] = os.getenv("NUM_SELFPLAY_GAMES", "50")
+
+# --- Validation/Early-stopping evaluation function ---
+def evaluate(model, data_loader, device):
+    model.eval()
+    total_loss = 0.0
+    total_samples = 0
+    with torch.no_grad():
+        for boards_np, moves, outcomes in data_loader:
+            boards = boards_np.float().to(device)
+            moves = moves.to(device)
+            outcomes = outcomes.to(device)
+            preds_policy, preds_value = model(boards)
+            loss_policy = F.cross_entropy(preds_policy.float(), moves)
+            loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
+            batch_loss = (loss_policy + loss_value).item() * boards.size(0)
+            total_loss += batch_loss
+            total_samples += boards.size(0)
+    model.train()
+    return total_loss / total_samples if total_samples > 0 else float('inf')
+
+# === RL hyperparameters ===
+ENTROPY_COEF = float(os.getenv("ENTROPY_COEF", "0.01"))
+REWARD_SHAPING_COEF = float(os.getenv("REWARD_SHAPING_COEF", "1.0"))
+LR_STEP_SIZE = int(os.getenv("LR_STEP_SIZE", "10"))
+LR_GAMMA = float(os.getenv("LR_GAMMA", "0.1"))
 try:
     import google.colab
     IN_COLAB = True
@@ -23,21 +52,57 @@ try:
         print("✅ TensorFlow GPU memory growth enabled")
 except Exception as e:
     print(f"⚠️ TensorFlow GPU config failed: {e}")
+import torch.nn
 import torch.nn.functional as F
 import torch.optim as optim
 import random
 import logging
 import json
 import numpy as np
+
+# === Deterministic seeding for reproducibility ===
+SEED = int(os.getenv("SEED", "42"))
+import random
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
+try:
+    tf.random.set_seed(SEED)
+except NameError:
+    pass
 import chess
 import chess.pgn
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import random_split
 from datetime import datetime
 from self_play import generate_self_play_data
 from telegram_utils import send_telegram_message
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ## Do not set multiprocessing start method globally here; move to main block.
 from torch.utils.tensorboard import SummaryWriter
+
+# Validation & Early-Stopping config
+PATIENCE = int(os.getenv("EARLY_STOPPING_PATIENCE", "5"))
+
+def evaluate(model, data_loader, device):
+    model.eval()
+    total_loss = 0.0
+    total_samples = 0
+    with torch.no_grad():
+        for boards_np, moves, outcomes in data_loader:
+            boards = boards_np.float().to(device)
+            moves = moves.to(device)
+            outcomes = outcomes.to(device)
+            preds_policy, preds_value = model(boards)
+            loss_policy = F.cross_entropy(preds_policy.float(), moves)
+            loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
+            batch_loss = (loss_policy + loss_value).item() * boards.size(0)
+            total_loss += batch_loss
+            total_samples += boards.size(0)
+    model.train()
+    return total_loss / total_samples if total_samples > 0 else float('inf')
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +199,10 @@ if not os.path.isfile(games_path) or os.path.getsize(games_path) == 0:
     print("✅ Telegram message sent.")
     sys.exit(1)
 model = ChessNet()
+# Enable multi-GPU data parallelism if available
+if torch.cuda.device_count() > 1:
+    logger.info(f"🌐 Using DataParallel on {torch.cuda.device_count()} GPUs")
+    model = torch.nn.DataParallel(model)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)  # Predeclare for potential loading
 if os.path.exists(resume_checkpoint):
     print("🔄 Resuming from checkpoint...")
@@ -155,22 +224,70 @@ if len(training_dataset) == 0:
     sys.exit(1)
 
 print("✅ Dataset ready")
-                
+
+# Split dataset into training and validation sets
+val_ratio = float(os.getenv("VAL_RATIO", "0.1"))
+val_size = int(len(training_dataset) * val_ratio)
+train_size = len(training_dataset) - val_size
+train_dataset, validation_dataset = random_split(training_dataset, [train_size, val_size])
+print(f"✅ Dataset split: {train_size} train, {val_size} val samples")
+
+# Split dataset into training and validation sets
+val_ratio = float(os.getenv("VAL_RATIO", "0.1"))
+val_size = int(len(training_dataset) * val_ratio)
+train_size = len(training_dataset) - val_size
+train_dataset, validation_dataset = random_split(training_dataset, [train_size, val_size])
+print(f"✅ Dataset split: {train_size} train, {val_size} val samples")
 
 
 
-def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False, num_workers=0):
+def train_model(model, train_dataset, val_dataset, optimizer, start_epoch=0, epochs=2, batch_size=2048, device='cpu', pin_memory=False, num_workers=0):
 
-    if isinstance(data, DataLoader):
-        dataloader = data
-        dataset = dataloader.dataset
-    else:
-        dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory, num_workers=num_workers)
-        dataset = data
+    from torch.cuda.amp import GradScaler
+    scaler = GradScaler()
+
+    # Create DataLoaders from provided datasets
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=pin_memory,
+        num_workers=num_workers,
+        persistent_workers=True,
+        prefetch_factor=2
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=pin_memory,
+        num_workers=num_workers,
+        persistent_workers=True,
+        prefetch_factor=2
+    )
+    print(f"✅ DataLoaders created: {len(train_dataset)} train, {len(val_dataset)} val samples")
+    dataloader = train_loader
+    dataset = train_dataset
 
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
+    # TensorFlow summary writer for TF logs
+    tf_log_dir = os.path.join(BASE_DIR, "runs", run_name, "tf_logs")
+    tf_writer = tf.summary.create_file_writer(tf_log_dir)
     print(f"Logging to: runs/{run_name}")
     model.train()
+    # Setup learning-rate schedulers: cyclical decay and plateau detection
+    cos_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer,
+        T_0=int(os.getenv("COSINE_T0", "10")),
+        T_mult=1
+    )
+    plateau_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode='min',
+        factor=LR_GAMMA,
+        patience=PATIENCE,
+        verbose=True
+    )
     model.to(device)
     torch.backends.cudnn.benchmark = True
     all_losses = []
@@ -178,14 +295,16 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
     all_accuracies = []
     all_scores = []
 
+    # Early-stopping trackers
+    best_val_loss = float('inf')
+    epochs_no_improve = 0
+
     print("Starting training...")
     send_telegram_message("✅ train.py started training...")
     print("✅ Starting epoch loop...")
 
     last_moves = None
     for epoch in range(start_epoch, epochs):
-
-
         send_telegram_message(f"🚀 Starting epoch {epoch+1}")
 
         if (epoch + 1) % 10 == 0:
@@ -222,7 +341,8 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
             boards = boards.to(device)
             moves = moves.to(device)
             outcomes = outcomes.to(device)
-            rewards = outcomes  # Assuming outcome is reward signal
+            # Apply reward shaping
+            rewards = outcomes * REWARD_SHAPING_COEF
             total_reward += rewards.sum().item()
             writer.add_scalar("Metrics/Reward", rewards.sum().item(), epoch * len(dataloader) + i)
 
@@ -237,26 +357,46 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
 
             loss_policy = F.cross_entropy(preds_policy.float(), moves)
             loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
-            loss = loss_policy + loss_value
+            # Entropy regularization
+            log_probs = F.log_softmax(preds_policy.float(), dim=1)
+            probs = F.softmax(preds_policy.float(), dim=1)
+            entropy = -(probs * log_probs).sum(dim=1).mean()
+            loss = loss_policy + loss_value - ENTROPY_COEF * entropy
 
             if torch.isnan(loss) or torch.isinf(loss):
                 print("⚠️ Skipping batch due to invalid loss (NaN or Inf)")
                 continue
 
-
             optimizer.zero_grad()
-            loss.backward()
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            if not torch.isnan(loss):
-                optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()
 
-            for param_group in optimizer.param_groups:
-                writer.add_scalar("Hyperparams/LearningRate", param_group["lr"], epoch)
+            # for param_group in optimizer.param_groups:
+            #     writer.add_scalar("Hyperparams/LearningRate", param_group["lr"], epoch)
 
             total_loss += loss.item()
 
             if i % 5 == 0:
                 print(f"Epoch {epoch+1} | Batch {i+1}/{len(dataloader)} | Loss: {loss.item():.4f} | GPU Mem: {torch.cuda.memory_allocated(device) / 1e6:.1f}MB")
+
+        # — Validation & Early-Stopping —
+        val_loss = evaluate(model, val_loader, device)
+        writer.add_scalar("Val/Loss", val_loss, epoch)
+        plateau_scheduler.step(val_loss)
+        send_telegram_message(f"📊 Validation Loss: {val_loss:.4f}")
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            epochs_no_improve = 0
+            torch.save(model.state_dict(), os.path.join(checkpoint_dir, "best_model.pth"))
+            send_telegram_message(f"✅ New best model saved with val loss {val_loss:.4f}")
+        else:
+            epochs_no_improve += 1
+            if epochs_no_improve >= PATIENCE:
+                send_telegram_message(f"⏹️ Early stopping at epoch {epoch+1} (no improvement for {PATIENCE} epochs)")
+                break
 
         # ♟️ Self-play after each epoch
         print("♟️ Generating self-play games...")
@@ -265,8 +405,15 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
 
         if new_selfplay_data and hasattr(dataset, "extend"):
             dataset.extend(new_selfplay_data)
-            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory, num_workers=num_workers)
-
+            dataloader = DataLoader(
+                dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                pin_memory=pin_memory,
+                num_workers=num_workers,
+                persistent_workers=True,
+                prefetch_factor=2
+            )
             print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
         elif new_selfplay_data:
             print("⚠️ Dataset does not support extension; self-play data ignored.")
@@ -291,6 +438,11 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
         score = (accuracy * 100) - (total_loss * 0.5) + (avg_reward * 10)
         score = max(0, min(score, 100))
         writer.add_scalar("Metrics/TrainingScore", score, epoch)
+        # Log to TensorFlow
+        with tf_writer.as_default():
+            tf.summary.scalar("Loss/Total", total_loss, step=epoch)
+            tf.summary.scalar("Metrics/Accuracy", accuracy, step=epoch)
+            tf.summary.scalar("Hyperparams/LearningRate", optimizer.param_groups[0]["lr"], step=epoch)
         print(f"\n🧠 Training Report — Epoch {epoch+1}")
         print(f"🎯 Accuracy: {accuracy * 100:.2f}%")
         print(f"📉 Loss: {total_loss:.4f}")
@@ -304,6 +456,12 @@ def train_model(model, data, optimizer, start_epoch=0, epochs=2, batch_size=2048
             f"📈 Score: {score:.2f}/100"
         )
         send_telegram_message(summary_msg)
+        writer.flush()
+
+        # Advance cosine warm restarts schedule
+        cos_scheduler.step(epoch + 1)
+        # Log updated learning rate
+        writer.add_scalar("Hyperparams/LearningRate", optimizer.param_groups[0]["lr"], epoch)
 
         all_losses.append(total_loss)
         all_rewards.append(total_reward / len(dataloader.dataset))
@@ -358,9 +516,11 @@ def capture_and_train():
     buffer = io.StringIO()
     try:
         with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+            # assuming validation_dataset is prepared earlier (e.g., split from training_dataset)
             result = train_model(
                 model=model,
-                data=training_dataset,
+                train_dataset=train_dataset,
+                val_dataset=validation_dataset,
                 optimizer=optimizer,
                 start_epoch=start_epoch,
                 epochs=100,
@@ -399,6 +559,7 @@ def capture_and_train():
 # Main entry point for script execution
 if __name__ == '__main__':
     import torch.multiprocessing
-    torch.multiprocessing.set_start_method('spawn', force=True)
+    if not IN_COLAB:
+        torch.multiprocessing.set_start_method('spawn', force=True)
     # Call the new function instead of direct train_model
     capture_and_train()

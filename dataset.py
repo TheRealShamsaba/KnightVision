@@ -89,12 +89,14 @@ class ChessDataset(Dataset):
 
 def create_dataloaders(
     jsonl_path, batch_size=64, val_split=0.1, max_games=None,
-    num_workers=os.cpu_count(), pin_memory=torch.cuda.is_available()
+    num_workers=os.cpu_count(), pin_memory=torch.cuda.is_available(),
+    seed: int = 42
 ):
     dataset = ChessDataset(jsonl_path, max_games=max_games)
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
-    train_ds, val_ds = torch.utils.data.random_split(dataset, [train_size, val_size])
+    generator = torch.Generator().manual_seed(seed)
+    train_ds, val_ds = torch.utils.data.random_split(dataset, [train_size, val_size], generator=generator)
     
     train_loader = DataLoader(
         train_ds,
