@@ -280,7 +280,13 @@ def self_play(num_games=100, sleep_time=0.0, max_moves=500):
 
     # parallel self-play using multiprocessing Pool
     max_workers = min(num_games, os.cpu_count() or 1)
-    model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
+    # point to the latest checkpoint saved by the training loop
+    candidate = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints", "model_latest.pth")
+    if os.path.exists(candidate):
+        model_path = candidate
+    else:
+        # fallback if training saved a different filename
+        model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
     pool = mp.Pool(
         processes=max_workers,
         initializer=_init_worker,
