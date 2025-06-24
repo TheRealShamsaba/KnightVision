@@ -188,9 +188,17 @@ def _run_single_game(game_idx, sleep_time, max_moves):
             # Store back for each entry
             _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
             _run_single_game._buffer.clear()
+        # Ensure we have inference outputs before retrieving
+        if not hasattr(_run_single_game, "_last_outputs"):
+            batch_np = np.stack(_run_single_game._buffer, axis=0).astype(np.float32)
+            batch_tensor = torch.from_numpy(batch_np).to(device)
+            with torch.no_grad():
+                batch_policy, batch_value = _shared_model(batch_tensor)
+            _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
+            _run_single_game._buffer.clear()
         # Retrieve last output
-        policy_logits = torch.from_numpy(_run_single_game._last_outputs[0][-(1)]).unsqueeze(0)
-        value_logits = torch.from_numpy(_run_single_game._last_outputs[1][-(1)]).unsqueeze(0)
+        policy_logits = torch.from_numpy(_run_single_game._last_outputs[0][-1]).unsqueeze(0)
+        value_logits = torch.from_numpy(_run_single_game._last_outputs[1][-1]).unsqueeze(0)
 
         policy = torch.softmax(policy_logits.squeeze(), dim=0).detach().cpu().numpy()
 
