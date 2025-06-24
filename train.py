@@ -407,7 +407,17 @@ def train_model(model, train_dataset, val_dataset, optimizer, start_epoch=0, epo
         print("♟️ Generating self-play games...")
         num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", 50))
         # positional arguments for generate_self_play_data
-        new_selfplay_data = generate_self_play_data(model, num_selfplay_games)
+        sleep_time = float(os.getenv("SELFPLAY_SLEEP", "0.0"))
+        max_moves = os.getenv("SELFPLAY_MAX_MOVES")
+        if max_moves is not None:
+            max_moves = int(max_moves)
+        new_selfplay_data = generate_self_play_data(
+            model,
+            num_selfplay_games,
+            device,
+            sleep_time,
+            max_moves=max_moves
+        )
 
         if new_selfplay_data and hasattr(dataset, "extend"):
             dataset.extend(new_selfplay_data)
