@@ -40,6 +40,13 @@ def _init_worker(model_path, device_str, seed):
     global _shared_model, device
     # device setup
     device = torch.device(device_str)
+    # Check if model_path exists; if not, try fallback
+    if not os.path.exists(model_path):
+        fallback = os.path.join(os.getenv("BASE_DIR", ""), "checkpoints", "model.pth")
+        if os.path.exists(fallback):
+            model_path = fallback
+        else:
+            raise FileNotFoundError(f"Model checkpoint not found at {model_path} or {fallback}")
     # load model
     m = ChessNet().to(device)
     m.load_state_dict(torch.load(model_path, map_location=device))
