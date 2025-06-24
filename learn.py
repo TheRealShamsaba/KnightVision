@@ -620,8 +620,8 @@ def main():
 
     # === Train the model ===
     train_model(
-        model=model,
-        data=dataset,
+        model,
+        dataset,
         optimizer=optimizer,
         start_epoch=0,
         epochs=10000,
