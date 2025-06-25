@@ -1,3 +1,5 @@
+from typing import List, Tuple, Any
+import torch.nn as nn
 import os
 import time
 import numpy as np
@@ -11,7 +13,6 @@ if mp.get_start_method(allow_none=True) != 'fork':
 # Dirichlet noise parameters
 EPSILON = float(os.getenv("DIR_NOISE_EPS", "0.25"))
 ALPHA = float(os.getenv("DIR_NOISE_ALPHA", "0.3"))
-from telegram_utils import send_telegram_message
 import logging
 from logging_utils import configure_logging
 # initialize module-level logger for both main and worker processes
@@ -19,13 +20,15 @@ configure_logging(os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 from ai import encode_board
 import datetime
-import tensorflow as tf
 import torch
+import random, numpy as np, os, torch
 
-# --- TensorBoard writer for self-play (available in workers) ---
-SELFPLAY_LOG_DIR = os.path.join(BASE_DIR, "runs", "self_play", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
-os.makedirs(SELFPLAY_LOG_DIR, exist_ok=True)
-tf_writer = tf.summary.create_file_writer(SELFPLAY_LOG_DIR)
+SEED = int(os.getenv("SEED", "42"))
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 
 # global device for self-play
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -38,8 +41,6 @@ import random as _random
 _random.seed(SEED)
 import numpy as _np
 _np.random.seed(SEED)
-import tensorflow as _tf
-_tf.random.set_seed(SEED)
 import torch as _torch
 _torch.manual_seed(SEED)
 if _torch.cuda.is_available():
@@ -57,6 +58,12 @@ def _init_worker(model_path, device_str, seed):
 
     # set device
     device = torch.device(device_str)
+    # Logging initialization for worker
+    import logging
+    from logging_utils import configure_logging
+    configure_logging(os.getenv("LOG_LEVEL", "INFO"))
+    global logger
+    logger = logging.getLogger(__name__)
 
     # Auto-discover checkpoint if original path missing
     if not os.path.exists(model_path):
@@ -96,38 +103,6 @@ def _init_worker(model_path, device_str, seed):
     if device.type == "cuda":
         torch.cuda.manual_seed_all(seed)
 
-if __name__ == '__main__':
-    # TensorBoard writer is now defined at module scope (see above)
-    configure_logging()
-    # logger = logging.getLogger(__name__)  # Already defined at module level
-    logger.info("Self-play script loaded...")
-    logger.info("✅ Telegram test message dispatched.")
-    logger.info("📋 Note: All Telegram messages will log their intent before sending.")
-
-    try:
-        send_telegram_message("📥 self_play.py loaded successfully.")
-    except Exception as e:
-        logger.error("⚠️ Telegram send failed: %s", e)
-
-    try:
-        import google.colab
-        IN_COLAB = True
-    except ImportError:
-        IN_COLAB = False
-
-    if IN_COLAB:
-        try:
-            from google.colab import drive
-            drive.mount("/content/drive", force_remount=True)
-            BASE_DIR = "/content/drive/MyDrive/KnightVision"
-        except Exception as e:
-            logger.error("⚠️ Colab drive mount failed: %s", e)
-            BASE_DIR = os.getenv("BASE_DIR", "/content/drive/MyDrive/KnightVision")
-    else:
-        logger.info("📦 Not running in Colab — skipping drive.mount")
-        from dotenv import load_dotenv
-        load_dotenv()
-        # BASE_DIR is already defined at the top
 
 from chessEngine import GameState
 from ai import encode_move
@@ -151,18 +126,9 @@ if __name__ == '__main__':
 
 
 def _run_single_game(game_idx, sleep_time, max_moves):
-    global _shared_model, device
+    global _shared_model, device, logger
     model = _shared_model
-    logger.info("🕹️ Starting game %s/%s", game_idx + 1, "N/A")
-    # Telegram notification for each game start
-    try:
-        send_telegram_message(f"🕹️ Game {game_idx+1}/N/A starting now.")
-    except Exception:
-        logger.error("⚠️ Telegram send failed for game start.")
-    # TensorFlow log for game start
-    with tf_writer.as_default():
-        tf.summary.scalar("SelfPlay/GameStart", 1, step=int(game_idx + 1))
-    tf_writer.flush()
+    logger.info("🕹️ Starting game %s", game_idx + 1)
     logger.debug("⏳ Game initialization complete — entering move loop")
     gs = GameState()
     game_data = []
@@ -202,20 +168,12 @@ def _run_single_game(game_idx, sleep_time, max_moves):
 
         policy = torch.softmax(policy_logits.squeeze(), dim=0).detach().cpu().numpy()
 
-        # Add TensorBoard histogram for policy distribution
-        with tf_writer.as_default():
-            tf.summary.histogram("SelfPlay/PolicyDist", policy, step=int(game_idx + 1))
-        tf_writer.flush()
-
         # Add Dirichlet exploration noise
         noise = np.random.dirichlet([ALPHA] * policy.shape[0])
         policy = (1 - EPSILON) * policy + EPSILON * noise
         # Log policy distribution stats
         entropy = -np.sum(policy * np.log(policy + 1e-8))
         logger.debug("Policy entropy: %.4f (mean prob: %.4f)", entropy, policy.mean())
-        with tf_writer.as_default():
-            tf.summary.scalar("SelfPlay/PolicyEntropy", float(entropy), step=int(game_idx + 1))
-        tf_writer.flush()
 
         legal_indices = [encode_move(m.startRow, m.startCol, m.endRow, m.endCol) for m in valid_moves]
         legal_probs = [policy[i] if i < len(policy) else 0 for i in legal_indices]
@@ -283,36 +241,8 @@ def _run_single_game(game_idx, sleep_time, max_moves):
         else:
             outcome = (white_material - black_material) / max(white_material, black_material)
         result_reason = "Material difference"
-    # TensorFlow log for moves and outcome
-    with tf_writer.as_default():
-        tf.summary.scalar("SelfPlay/MovesPerGame", int(move_count), step=int(game_idx + 1))
-        tf.summary.scalar("SelfPlay/Outcome", float(outcome), step=int(game_idx + 1))
-    tf_writer.flush()
-    logger.info("🧠 Logged moves and outcome for game %s to TensorBoard", game_idx + 1)
-    for state, move in game_data:
-        pass
-    message = f"🏁 Game finished — {result_reason}. Moves: {len(game_data)} | Outcome: {outcome}"
-    if outcome == 0.5:
-        try:
-            send_telegram_message("⚖️ Draw detected during self-play.")
-        except Exception as e:
-            logger.error("⚠️ Telegram send failed: %s", e)
-    logger.debug("📨 Message to send: %s", message)
-    try:
-        send_telegram_message(message)
-    except Exception as e:
-        logger.error("⚠️ Telegram send failed: %s", e)
-
-    if game_data:
-        sample = game_data[0]
-        try:
-            send_telegram_message(f"🎯 Sample game generated.\nMoves: {len(game_data)} | First move index: {sample[1]}")
-        except Exception as e:
-            logger.error("⚠️ Telegram send failed: %s", e)
-    else:
-        logger.warning("⚠️ No game data generated to report.")
-    logger.debug("🧠 RAM usage: %s%%", psutil.virtual_memory().percent)
     logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", game_idx + 1, len(game_data), outcome)
+    logger.debug("🧠 RAM usage: %s%%", psutil.virtual_memory().percent)
     if torch.cuda.is_available():
         logger.debug("💾 VRAM: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
 
@@ -322,29 +252,20 @@ def _run_single_game(game_idx, sleep_time, max_moves):
     return game_idx, game_data_with_outcome
 
 
-def self_play(num_games=100, sleep_time=0.0, max_moves=500):
-    print("✅ self_play() function has started executing", flush=True)
-
+def self_play(model, num_games, device, max_moves=None):
+    logger.info("Starting self-play with %s games...", num_games)
     data = []
-
-    # allow sequential test mode or custom worker count via env
     SEQUENTIAL = os.getenv("SELFPLAY_SEQ", "0") == "1"
     WORKERS = int(os.getenv("SELFPLAY_WORKERS", str(min(num_games, os.cpu_count() or 1))))
-
-    # point to the latest checkpoint saved by the training loop
     candidate = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints", "model_latest.pth")
     if os.path.exists(candidate):
         model_path = candidate
     else:
-        # fallback if training saved a different filename
         model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
-
-    # parallel self-play using multiprocessing Pool or sequential mode
     if SEQUENTIAL or WORKERS <= 1:
         logger.info("🔁 Running self-play sequentially with %s games", num_games)
-        # initialize shared model so it’s callable in sequential mode
         _init_worker(model_path, device.type, SEED)
-        results = [_run_single_game(idx, sleep_time, max_moves) for idx in range(num_games)]
+        results = [_run_single_game(idx, 0.0, max_moves) for idx in range(num_games)]
     else:
         logger.info("🔁 Running self-play in parallel with %s workers", WORKERS)
         pool = mp.Pool(
@@ -352,47 +273,13 @@ def self_play(num_games=100, sleep_time=0.0, max_moves=500):
             initializer=_init_worker,
             initargs=(model_path, device.type, SEED)
         )
-        tasks = [(idx, sleep_time, max_moves) for idx in range(num_games)]
+        tasks = [(idx, 0.0, max_moves) for idx in range(num_games)]
         results = pool.starmap(_run_single_game, tasks)
         pool.close()
         pool.join()
     for idx, game_data in results:
         data.extend(game_data)
-
-    # --- Self-play aggregated summary ---
-    outcomes = [o for (_, _, o) in data]
-    wins = sum(1 for o in outcomes if o > 0.5)
-    draws = sum(1 for o in outcomes if o == 0.5)
-    losses = sum(1 for o in outcomes if o < 0.5)
-    # Log summary metrics to TensorBoard
-    with tf_writer.as_default():
-        tf.summary.scalar("SelfPlay/Wins", wins, step=0)
-        tf.summary.scalar("SelfPlay/Draws", draws, step=0)
-        tf.summary.scalar("SelfPlay/Losses", losses, step=0)
-    tf_writer.flush()
-    # Send Telegram summary notification
-    try:
-        send_telegram_message(f"📝 Self-play summary: 🏆 {wins} ⚖️ {draws} ❌ {losses}")
-    except Exception as e:
-        logger.error("⚠️ Telegram summary failed: %s", e)
-
-    try:
-        send_telegram_message(f"🤖 Starting self-play with {num_games} games...")
-    except Exception as e:
-        logger.error("⚠️ Telegram send failed: %s", e)
-    logger.info("Starting self-play with %s games...", num_games)
-    logger.debug("🧪 Self-play loop entered")
-    try:
-        send_telegram_message(f"🎮 Confirmed: Self-play function is running with {num_games} games.")
-    except Exception as e:
-        logger.error("⚠️ Telegram send failed: %s", e)
-
     logger.info("✅ Completed all self-play games: %s/%s", num_games, num_games)
-    try:
-        send_telegram_message(f"🏁 All {num_games} self-play games completed and logged to {SELFPLAY_LOG_DIR}.")
-    except Exception:
-        logger.error("⚠️ Telegram send failed for completion notice.")
-
     return data
 
 
@@ -402,59 +289,8 @@ def piece_value(piece):
     return values.get(piece.upper(), 0)
 
 
-def generate_self_play_data(*args, **kwargs):
-    # Support calls like generate_self_play_data(model, num_games, device, sleep_time, max_moves)
-    num_games = kwargs.get('num_games')
-    if num_games is None and len(args) >= 2:
-        num_games = args[1]
-    elif num_games is None and len(args) >= 1:
-        num_games = args[0]
-    sleep_time = kwargs.get('sleep_time', 0.0)
-    max_moves = kwargs.get('max_moves', None)
-    return self_play(num_games=num_games, sleep_time=sleep_time, max_moves=max_moves)
+def generate_self_play_data(model: nn.Module, num_games: int, device: torch.device, max_moves: int = None) -> List[Tuple[Any, int, float]]:
+    global _shared_model
+    _shared_model = model
+    return self_play(model, num_games, device, max_moves)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Run self-play")
-    parser.add_argument("--log-level", default=os.getenv("LOG_LEVEL", "INFO"), help="Logging level")
-    args = parser.parse_args()
-    configure_logging(args.log_level)
-
-    # (Re-)initialize model and device in main block only
-    model = ChessNet()
-    model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
-    if not os.path.exists(model_path):
-        logger.error("❌ Model checkpoint not found: %s", model_path)
-        exit(1)
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    logger.info("✅ Model loaded successfully — starting self_play()")
-    try:
-        send_telegram_message("📦 Self-play started from __main__ with loaded model.")
-    except Exception as e:
-        logger.error("⚠️ Telegram send failed: %s", e)
-    model.to(device)
-    logger.info("✅ Loaded model from %s", model_path)
-    data = self_play(num_games=50, max_moves=500)
-
-    import json
-    import numpy as np
-
-    class NumpyEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            return super().default(obj)
-
-    save_path = os.path.join(BASE_DIR, f"self_play_data_{time.strftime('%Y-%m-%d_%H-%M-%S')}.jsonl")
-    with open(save_path, "w") as f:
-        for state, move, outcome in data:
-            f.write(json.dumps({
-                "state": state,
-                "move": move,
-                "outcome": outcome
-            }, cls=NumpyEncoder) + "\n")
-    logger.info("💾 Saved self-play data to %s — %s samples.", save_path, len(data))
-
-    logger.info("🧪 self_play() execution finished.")
-    logger.info("Generated %s samples from self-play", len(data))

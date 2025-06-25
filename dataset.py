@@ -38,7 +38,8 @@ class ChessDataset(Dataset):
                     if max_games and i >= max_games:
                         break
                     game = json.loads(line)
-                    fen, move, outcome = game['fen'], game['move'], game.get('outcome')
+                    fen, move = game['fen'], game['move']
+                    outcome = game.get('outcome', 0.0)
 
                     if move not in self.move_to_idx:
                         idx = len(self.move_to_idx)
@@ -47,11 +48,12 @@ class ChessDataset(Dataset):
 
                     board_tensor = self.fen_to_tensor(fen)
                     move_idx = self.move_to_idx[move]
-                    self.data.append((board_tensor, move_idx))
+                    self.data.append((board_tensor, move_idx, outcome))
             logger.info("[DATASET] Loaded %s samples from %s", len(self.data), jsonl_path)
             logger.info("[DATASET] Unique moves encoded: %s", len(self.move_to_idx))
-        except Exception as e:
+        except (IOError, json.JSONDecodeError) as e:
             logger.error("[ERROR] Failed to load dataset from %s: %s", jsonl_path, e)
+            raise
 
     def fen_to_tensor(self, fen):
         board = chess.Board(fen)
@@ -73,18 +75,19 @@ class ChessDataset(Dataset):
     def extend(self, games):
         """
         Extend the dataset with additional self-play games.
-        Each game should be a dict with 'fen' and 'move' keys.
+        Each game should be a dict with 'fen', 'move', and 'outcome' keys.
         """
         for game in games:
             fen = game['fen']
             move = game['move']
+            outcome = game.get('outcome', 0.0)
             if move not in self.move_to_idx:
                 idx = len(self.move_to_idx)
                 self.move_to_idx[move] = idx
                 self.idx_to_move[idx] = move
             board_tensor = self.fen_to_tensor(fen)
             move_idx = self.move_to_idx[move]
-            self.data.append((board_tensor, move_idx))
+            self.data.append((board_tensor, move_idx, outcome))
 
 
 def create_dataloaders(
