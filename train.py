@@ -122,8 +122,9 @@ def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dat
     print("♟️ Generating self-play games...")
     # Call generate_self_play_data using positional arguments only
     new_selfplay_data = generate_self_play_data(
-        model, num_selfplay_games, device, sleep_time, max_moves
+        model, num_selfplay_games, device, max_moves
     )
+    import time; time.sleep(sleep_time)
     dataloader = None
     if new_selfplay_data and hasattr(dataset, "extend"):
         dataset.extend(new_selfplay_data)
