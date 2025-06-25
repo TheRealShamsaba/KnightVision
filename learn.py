@@ -124,7 +124,7 @@ def reinforcement_loop(cfg):
     train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
 
     # Stage 3: train with validation
-    train_with_validation(model, cfg, train_dataset, val_dataset)
+    train_with_validation(model, cfg, train_dataset, val_dataset, checkpoint_path=cfg.checkpoint_path)
 
     # Stage 4: generate self-play data
     new_games = generate_self_play_data(model, cfg.selfplay.num_games, cfg.device, cfg.selfplay.max_moves)
