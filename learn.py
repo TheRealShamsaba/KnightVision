@@ -180,7 +180,7 @@ def train_with_validation(model, cfg, train_dataset=None, val_dataset=None):
         epochs=cfg.train.epochs,
         batch_size=cfg.train.batch_size,
         device=cfg.device,
-        checkpoint_path=cfg.checkpoint_path
+        patience=cfg.patience
     )
 
 def main():
