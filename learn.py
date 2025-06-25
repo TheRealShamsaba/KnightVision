@@ -160,7 +160,7 @@ def _load_model_helper(
 
 from torch.utils.data import random_split
 
-def train_with_validation(model, cfg, train_dataset=None, val_dataset=None):
+def train_with_validation(model, cfg, train_dataset=None, val_dataset=None, checkpoint_path=None):
     from train import ChessPGNDataset
     import torch.optim as optim
     # Prepare dataset if not provided
@@ -180,7 +180,7 @@ def train_with_validation(model, cfg, train_dataset=None, val_dataset=None):
         epochs=cfg.train.epochs,
         batch_size=cfg.train.batch_size,
         device=cfg.device,
-        checkpoint_path=cfg.checkpoint_path,
+        checkpoint_path=checkpoint_path or cfg.checkpoint_path,
         patience=cfg.patience
     )
 
