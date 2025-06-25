@@ -192,11 +192,10 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     all_scores = []
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    # Self-play hyperparams from environment
-    num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", "50"))
-    sleep_time = float(os.getenv("SELFPLAY_SLEEP", "0.0"))
-    max_moves_env = os.getenv("SELFPLAY_MAX_MOVES")
-    max_moves = int(max_moves_env) if max_moves_env else None
+    # Quick test: disable self-play entirely
+    num_selfplay_games = 0
+    sleep_time = 0.0
+    max_moves = None
     print("Starting training...")
     send_telegram_message("✅ train.py started training...")
     print("✅ Starting epoch loop...")
