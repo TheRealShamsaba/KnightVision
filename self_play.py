@@ -342,6 +342,8 @@ def self_play(num_games=100, sleep_time=0.0, max_moves=500):
     # parallel self-play using multiprocessing Pool or sequential mode
     if SEQUENTIAL or WORKERS <= 1:
         logger.info("🔁 Running self-play sequentially with %s games", num_games)
+        # initialize shared model so it’s callable in sequential mode
+        _init_worker(model_path, device.type, SEED)
         results = [_run_single_game(idx, sleep_time, max_moves) for idx in range(num_games)]
     else:
         logger.info("🔁 Running self-play in parallel with %s workers", WORKERS)
