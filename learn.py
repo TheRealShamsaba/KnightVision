@@ -159,8 +159,11 @@ def reinforcement_loop(cfg):
     if new_games:
         dataset.extend(new_games)
 
-    # Stage 6: evaluate vs Stockfish
-    play_vs_stockfish(model, cfg.stockfish)
+    # Stage 6: evaluate vs Stockfish (skip during quick-test)
+    if cfg.selfplay.num_games > 0:
+        play_vs_stockfish(model, cfg.stockfish)
+    else:
+        logger.info("🔧 Quick test mode: skipping Stockfish benchmark")
 
 
 # --- Helper for new reinforcement_loop ---
