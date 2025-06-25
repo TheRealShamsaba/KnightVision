@@ -179,8 +179,7 @@ def train_with_validation(model, cfg, train_dataset=None, val_dataset=None):
         optimizer,
         epochs=cfg.train.epochs,
         batch_size=cfg.train.batch_size,
-        device=cfg.device,
-        patience=cfg.patience
+        device=cfg.device
     )
 
 def main():
