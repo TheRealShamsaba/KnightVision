@@ -141,10 +141,19 @@ def reinforcement_loop(cfg):
     logger.info("✅ Quick test complete: model checkpoint saved")
     safe_send_telegram("✅ Quick test complete: model checkpoint saved")
 
-    # Stage 4: generate self-play data
-    new_games = generate_self_play_data(model, cfg.selfplay.num_games, cfg.device, cfg.selfplay.max_moves)
-    logger.info("♟️ Self-play generated %d games", len(new_games))
-    safe_send_telegram(f"♟️ Self-play generated {len(new_games)} games")
+    # Stage 4: generate self-play data (skip during quick-test)
+    if cfg.selfplay.num_games > 0:
+        new_games = generate_self_play_data(
+            model,
+            cfg.selfplay.num_games,
+            cfg.device,
+            cfg.selfplay.max_moves
+        )
+        logger.info("♟️ Self-play generated %d games", len(new_games))
+        safe_send_telegram(f"♟️ Self-play generated {len(new_games)} games")
+    else:
+        logger.info("🔧 Quick test mode: skipping self-play")
+        new_games = []
 
     # Stage 5: extend dataset with new self-play games
     if new_games:
