@@ -1,4 +1,3 @@
-from model_utils import load_or_initialize_model
 import os
 import torch
 import torch.optim as optim
