@@ -108,7 +108,7 @@ def build_cfg():
 
 def reinforcement_loop(cfg):
     # Stage 1: load or initialize model
-    model, optimizer, start_epoch = load_or_initialize_model(
+    model, optimizer, start_epoch = _load_model_helper(
         ChessNet,
         optim.Adam,
         {'lr': cfg.train.lr},
@@ -140,7 +140,7 @@ def reinforcement_loop(cfg):
 
 
 # --- Helper for new reinforcement_loop ---
-def load_or_initialize_model(
+def _load_model_helper(
     model_class,
     optimizer_class,
     optimizer_kwargs,
