@@ -124,7 +124,7 @@ def reinforcement_loop(cfg):
     train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
 
     # Stage 3: train with validation
-    train_with_validation(model, cfg, train_dataset, val_dataset, checkpoint_path=cfg.checkpoint_path)
+    train_with_validation(model, cfg, train_dataset, val_dataset)
 
     # Stage 4: generate self-play data
     new_games = generate_self_play_data(model, cfg.selfplay.num_games, cfg.device, cfg.selfplay.max_moves)
@@ -160,7 +160,7 @@ def _load_model_helper(
 
 from torch.utils.data import random_split
 
-def train_with_validation(model, cfg, train_dataset=None, val_dataset=None, checkpoint_path=None):
+def train_with_validation(model, cfg, train_dataset=None, val_dataset=None):
     from train import ChessPGNDataset
     import torch.optim as optim
     # Prepare dataset if not provided
@@ -180,7 +180,7 @@ def train_with_validation(model, cfg, train_dataset=None, val_dataset=None, chec
         epochs=cfg.train.epochs,
         batch_size=cfg.train.batch_size,
         device=cfg.device,
-        checkpoint_path=checkpoint_path or cfg.checkpoint_path,
+        checkpoint_path=cfg.checkpoint_path,
         patience=cfg.patience
     )
 
