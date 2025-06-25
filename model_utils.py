@@ -14,10 +14,13 @@ def load_or_initialize_model(model_class, optimizer_class, optimizer_kwargs, che
     start_epoch = 0
     if checkpoint_path and os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
-        model.load_state_dict(checkpoint["model_state_dict"])
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        start_epoch = checkpoint.get("epoch", 0)
-        print("🔁 Checkpoint loaded.")
+        if "model_state_dict" in checkpoint and "optimizer_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            start_epoch = checkpoint.get("epoch", 0)
+            print("🔁 Checkpoint loaded.")
+        else:
+            print("⚠️ Checkpoint is missing expected keys. Initializing fresh model.")
     else:
         print("🆕 Initializing new model and optimizer.")
     
