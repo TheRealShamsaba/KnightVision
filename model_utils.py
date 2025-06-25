@@ -3,6 +3,22 @@ import torch
 import torch.optim as optim
 from model import ChessNet
 
+def load_or_initialize_model(model_class, optimizer_class, optimizer_kwargs, checkpoint_path, device):
+    model = model_class().to(device)
+    optimizer = optimizer_class(model.parameters(), **optimizer_kwargs)
+
+    start_epoch = 0
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        start_epoch = checkpoint.get("epoch", 0)
+        print("🔁 Checkpoint loaded.")
+    else:
+        print("🆕 Initializing new model and optimizer.")
+    
+    return model, optimizer, start_epoch
+
 # --- Model & optimizer loading ---
 model, optimizer, start_epoch = load_or_initialize_model(
     model_class=ChessNet,
