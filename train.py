@@ -523,18 +523,20 @@ def capture_and_train():
     try:
         with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
             # assuming validation_dataset is prepared earlier (e.g., split from training_dataset)
+            print("🔧 Quick test: epochs=1, batch_size=512, pin_memory=False, num_workers=0")
             result = train_with_validation(
                 model=model,
                 optimizer=optimizer,
                 start_epoch=start_epoch,
                 train_dataset=train_dataset,
                 val_dataset=validation_dataset,
-                epochs=100,
-                batch_size=2048,
+                epochs=1,
+                batch_size=512,
                 device=device,
-                pin_memory=True,
-                num_workers=os.cpu_count()
+                pin_memory=False,
+                num_workers=0
             )
+            print("✅ Quick test complete: model saved to best_model.pth")
     except Exception as e:
         msg = f"❌ Training failed: {e}"
         print(msg)

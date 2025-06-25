@@ -107,6 +107,9 @@ def build_cfg():
     )
 
 def reinforcement_loop(cfg):
+    # 🔧 Quick test mode: skip self-play
+    cfg.selfplay.num_games = 0
+    logger.info("🔧 Quick test mode: selfplay disabled")
     # Stage 1: load or initialize model
     model, optimizer, start_epoch = _load_model_helper(
         ChessNet,
@@ -135,6 +138,8 @@ def reinforcement_loop(cfg):
         batch_size=cfg.train.batch_size,
         device=cfg.device
     )
+    logger.info("✅ Quick test complete: model checkpoint saved")
+    safe_send_telegram("✅ Quick test complete: model checkpoint saved")
 
     # Stage 4: generate self-play data
     new_games = generate_self_play_data(model, cfg.selfplay.num_games, cfg.device, cfg.selfplay.max_moves)
