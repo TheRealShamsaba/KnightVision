@@ -1,4 +1,4 @@
-
+bekir
  # basicChess
 +
 +This project contains a simple chess game and a reinforcement learning setup for training a model to play.
