@@ -31,6 +31,9 @@ import torch.optim as optim
 from stockfish_play import play_vs_stockfish
 from self_play import generate_self_play_data
 
+
+# example usage inside your RL loop:
+
 # --- Reproducibility: fixed global seed ---
 SEED = int(os.getenv("SEED", "42"))
 random.seed(SEED)
@@ -108,8 +111,8 @@ def build_cfg():
 
 def reinforcement_loop(cfg):
     # 🔧 Quick test mode: skip self-play
-    cfg.selfplay.num_games = 0
-    logger.info("🔧 Quick test mode: selfplay disabled")
+    # cfg.selfplay.num_games = 0
+    # logger.info("🔧 Quick test mode: selfplay disabled")
     # Stage 1: load or initialize model
     model, optimizer, start_epoch = _load_model_helper(
         ChessNet,
