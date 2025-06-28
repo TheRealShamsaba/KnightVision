@@ -83,7 +83,7 @@ def build_cfg():
     batch_size = int(os.getenv("BATCH_SIZE", "2048"))
     lr = float(os.getenv("LR", "1e-3"))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    stockfish_cfg = SimpleNamespace(path=os.getenv("STOCKFISH_PATH", "stockfish"), depth=int(os.getenv("STOCKFISH_DEPTH", "10")))
+    stockfish_cfg = stockfish_cfg = SimpleNamespace(path=os.getenv("STOCKFISH_PATH", "/usr/bin/stockfish"), depth=int(os.getenv("STOCKFISH_DEPTH", "10")))
     # Logging configuration values before returning
     logger.info("Configuration:")
     for k, v in locals().items():
