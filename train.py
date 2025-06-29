@@ -566,7 +566,7 @@ send_telegram_message("🚀 Training started...")
 # Function to capture stdout and stderr during training and send via Telegram in chunks
 def capture_and_train():
     # assuming validation_dataset is prepared earlier (e.g., split from training_dataset)
-    print(f"🔧 Training: epochs={args.epochs}, batch_size=16384, pin_memory=True, num_workers=12")
+    print(f"🔧 Training: epochs={args.epochs}, batch_size=4096, pin_memory=True, num_workers=12")
     try:
         result = train_with_validation(
             model=model,
@@ -575,7 +575,7 @@ def capture_and_train():
             train_dataset=train_dataset,
             val_dataset=validation_dataset,
             epochs=args.epochs,
-            batch_size=8192,
+            batch_size=4096,
             device=device,
             pin_memory=True,
             num_workers=12
