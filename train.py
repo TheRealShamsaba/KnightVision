@@ -1,4 +1,6 @@
 print("Training script loaded...")
+import threading
+import time
 import sys
 import os
 import torch
@@ -126,10 +128,16 @@ def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler,
 
 def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dataset, batch_size, pin_memory, num_workers, DataLoader):
     print("♟️ Generating self-play games...")
+    # Self-play timeout monitoring
+    start_time = time.time()
+    MAX_ALLOWED_TIME = 3600  # 1 hour
     # Call generate_self_play_data using positional arguments only
     new_selfplay_data = generate_self_play_data(
         model, num_selfplay_games, device, max_moves
     )
+    elapsed = time.time() - start_time
+    if elapsed > MAX_ALLOWED_TIME:
+        send_telegram_message(f"⚠️ Self-play took too long ({elapsed:.1f}s). Possible hang or crash risk!")
     print(f"✅ Self-play data generated: {len(new_selfplay_data)} samples")
     import time; time.sleep(sleep_time)
     dataloader = None
@@ -145,7 +153,7 @@ def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dat
                 dataset,
                 shuffle=True,
                 **(
-                    {"persistent_workers": True, "prefetch_factor": 2}
+                    {"persistent_workers": True, "prefetch_factor": 8}
                     if num_workers > 0 else {}
                 ),
                 **loader_kwargs,
@@ -163,7 +171,7 @@ args = parser.parse_args()
 
 num_epochs = args.epochs
 # === New train_with_validation function ===
-def train_with_validation(model, optimizer, start_epoch, train_dataset, val_dataset, epochs=num_epochs, batch_size=2048, device='cpu', pin_memory=False, num_workers=0):
+def train_with_validation(model, optimizer, start_epoch, train_dataset, val_dataset, epochs=num_epochs, batch_size=2048, device='cpu', pin_memory=True, num_workers=8):
     from torch.cuda.amp import GradScaler
     scaler = GradScaler()
     # Build DataLoader kwargs
@@ -173,7 +181,7 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     if num_workers > 0:
         loader_kwargs["num_workers"] = num_workers
         loader_kwargs["persistent_workers"] = True
-        loader_kwargs["prefetch_factor"] = 2
+        loader_kwargs["prefetch_factor"] = 8
     train_loader = DataLoader(train_dataset, shuffle=True, **loader_kwargs)
     val_loader   = DataLoader(val_dataset,   shuffle=False, **loader_kwargs)
     print(f"✅ DataLoaders created: {len(train_dataset)} train, {len(val_dataset)} val samples")
@@ -214,9 +222,19 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     send_telegram_message("✅ train.py started training...")
     print("✅ Starting epoch loop...")
     last_moves = None
+    # Heartbeat and timeout monitoring
+    last_epoch_time = time.time()
+    def heartbeat_checker():
+        while True:
+            if time.time() - last_epoch_time > 3600:  # 1 hour without finishing an epoch
+                send_telegram_message("⚠️ No new epoch finished in 1 hour. Possible hang!")
+            time.sleep(300)  # Check every 5 minutes
+    heartbeat_thread = threading.Thread(target=heartbeat_checker, daemon=True)
+    heartbeat_thread.start()
     # Get accumulate_steps from environment
     accumulate_steps = int(os.getenv("ACCUM_STEPS", "1"))
     for epoch in range(start_epoch, epochs):
+        last_epoch_time = time.time()
         send_telegram_message(f"🚀 Starting epoch {epoch+1}")
         if (epoch + 1) % 10 == 0:
             from datetime import datetime
@@ -557,7 +575,7 @@ def capture_and_train():
             train_dataset=train_dataset,
             val_dataset=validation_dataset,
             epochs=args.epochs,
-            batch_size=512,
+            batch_size=2048,
             device=device,
             pin_memory=False,
             num_workers=4
