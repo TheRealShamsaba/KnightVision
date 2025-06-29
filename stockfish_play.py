@@ -89,10 +89,10 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
 
             outcome = board.result()
             print(f"🧾 Game Result: {outcome}")
-            if outcome == "1-0":
-                results["win" if ai_color == chess.WHITE else "loss"] += 1
-            elif outcome == "0-1":
-                results["loss" if ai_color == chess.WHITE else "win"] += 1
+            if (outcome == "1-0" and ai_color == chess.WHITE) or (outcome == "0-1" and ai_color == chess.BLACK):
+                results["win"] += 1
+            elif (outcome == "1-0" and ai_color == chess.BLACK) or (outcome == "0-1" and ai_color == chess.WHITE):
+                results["loss"] += 1
             else:
                 results["draw"] += 1
 

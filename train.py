@@ -56,10 +56,9 @@ def _train_one_epoch(model, dataloader, optimizer, epoch, device, writer, scaler
         boards = boards.to(device)
         moves = moves.to(device)
         outcomes = outcomes.to(device)
-        # Apply reward shaping
-        rewards = outcomes * REWARD_SHAPING_COEF
-        total_reward += rewards.sum().item()
-        writer.add_scalar("Metrics/Reward", rewards.sum().item(), epoch * num_batches + i)
+        # Use discrete self-play outcomes directly as reward (+1, 0, -1)
+        total_reward += outcomes.sum().item()
+        writer.add_scalar("Metrics/Reward", outcomes.sum().item(), epoch * num_batches + i)
 
         with torch.cuda.amp.autocast():
             preds_policy, preds_value = model(boards)

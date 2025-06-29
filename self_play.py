@@ -219,7 +219,7 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
 
     # Determine outcome, with max-move override
     if maxed_out:
-        outcome = 0.5
+        outcome = 0  # Treat as draw
         result_reason = f"Max moves ({max_moves}) reached"
     elif gs.inCheck() and len(gs.getValidMoves()) == 0:
         # Checkmate
@@ -227,28 +227,22 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
         result_reason = "Checkmate"
     elif len(gs.getValidMoves()) == 0:
         # Stalemate
-        outcome = 0.5
+        outcome = 0
         result_reason = "Stalemate"
     elif gs.isDraw():
         # Draw by repetition or 50-move rule
-        outcome = 0.5
+        outcome = 0
         result_reason = "Draw (50-move or repetition)"
     else:
-        # Material-based score for early termination
         white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
         black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
-        material_diff = abs(white_material - black_material)
-        if material_diff >= 12:
-            logger.warning(f"⚠️ Early resignation triggered due to material diff ({material_diff}); ending game.")
-            maxed_out = True
-            outcome = 0.5
-            result_reason = f"Early resignation due to material difference ({material_diff})"
+        if white_material > black_material:
+            outcome = 1 if not gs.whiteToMove else -1
+        elif black_material > white_material:
+            outcome = -1 if not gs.whiteToMove else 1
         else:
-            if white_material == black_material:
-                outcome = 0
-            else:
-                outcome = (white_material - black_material) / max(white_material, black_material)
-            result_reason = "Material difference"
+            outcome = 0
+        result_reason = "Material-based final evaluation"
     logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", game_idx + 1, len(game_data), outcome)
     logger.debug("🧠 RAM usage: %s%%", psutil.virtual_memory().percent)
     if torch.cuda.is_available():
