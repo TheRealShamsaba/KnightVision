@@ -198,8 +198,8 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         patience=PATIENCE,
         verbose=True
     )
-    model.to(device)
-    torch.backends.cudnn.benchmark = True
+    # model.to(device) -- moved to main block
+    # torch.backends.cudnn.benchmark = True -- moved to main block
     all_losses = []
     all_rewards = []
     all_accuracies = []
@@ -589,6 +589,9 @@ if __name__ == '__main__':
     import torch.multiprocessing
     if not IN_COLAB:
         torch.multiprocessing.set_start_method('spawn', force=True)
+    # Move CUDA setup here
+    torch.backends.cudnn.benchmark = True
+    model.to(device)
     # Define helper functions only in main process to avoid multiprocessing issues
     globals().update({
         "_train_one_epoch": _train_one_epoch,
