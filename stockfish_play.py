@@ -54,7 +54,8 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                 if board.turn == ai_color:
                     # AI's turn: encode board and get network logits
                     encoded = encode_board(board)
-                    board_tensor = torch.tensor([encoded], dtype=torch.float32).to(device)
+                    board_np = np.expand_dims(encoded, axis=0)  # shape (1, ...)
+                    board_tensor = torch.from_numpy(board_np).float().to(device)
                     
                     with torch.no_grad():
                         logits, _ = model(board_tensor)  # shape [1, 4096]

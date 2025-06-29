@@ -4,6 +4,23 @@ import torch.nn as nn
 # Enable cuDNN autotuner for better performance on fixed-size inputs
 torch.backends.cudnn.benchmark = True
 
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(channels)
+
+    def forward(self, x):
+        residual = x
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += residual
+        out = self.relu(out)
+        return out
+
 class ChessNet(nn.Module):
     def __init__(self, verbose: bool = False):
         super(ChessNet, self).__init__()
@@ -14,15 +31,7 @@ class ChessNet(nn.Module):
         self.conv2 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(512)
 
-        self.res_blocks = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(512, 512, kernel_size=3, padding=1),
-                nn.BatchNorm2d(512),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(512, 512, kernel_size=3, padding=1),
-                nn.BatchNorm2d(512)
-            ) for _ in range(5)
-        ])
+        self.res_blocks = nn.ModuleList([ResidualBlock(512) for _ in range(5)])
 
         self.policy_conv = nn.Conv2d(512, 2, kernel_size=1)
         self.policy_bn = nn.BatchNorm2d(2)
@@ -44,10 +53,7 @@ class ChessNet(nn.Module):
         x = torch.relu(self.bn2(self.conv2(x)))
 
         for block in self.res_blocks:
-            residual = x
             x = block(x)
-            x += residual
-            x = torch.relu(x)
 
         policy = torch.relu(self.policy_bn(self.policy_conv(x)))
         policy = torch.flatten(policy, 1)
@@ -62,4 +68,4 @@ class ChessNet(nn.Module):
         if self.verbose:
             print("📤 Value output shape:", value.shape)
 
-        return policy.to(x.device), value.to(x.device)
+        return policy, value

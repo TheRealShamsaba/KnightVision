@@ -252,8 +252,16 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
     if torch.cuda.is_available():
         logger.debug("💾 VRAM: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
 
-    # Attach outcome to each move data
-    game_data_with_outcome = [(state, move, outcome) for (state, move) in game_data]
+    # Adjusted reward logic
+    if outcome == 1:   # Win
+        reward = 1.0
+    elif outcome == 0: # Draw
+        reward = 0.2
+    else:              # Loss
+        reward = -1.0
+
+    # Attach reward (not just outcome) to each move data
+    game_data_with_outcome = [(state, move, reward) for (state, move) in game_data]
 
     return game_idx, game_data_with_outcome
 

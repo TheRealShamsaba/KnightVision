@@ -70,6 +70,7 @@ def _train_one_epoch(model, dataloader, optimizer, epoch, device, writer, scaler
             batch_accuracy = 0.0
 
         loss_policy = F.cross_entropy(preds_policy.float(), moves)
+        # Value head is trained to predict the final reward (outcome)
         loss_value = F.mse_loss(preds_value.squeeze().float(), outcomes)
         # Entropy regularization
         log_probs = F.log_softmax(preds_policy.float(), dim=1)
@@ -123,27 +124,29 @@ def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dat
     new_selfplay_data = generate_self_play_data(
         model, num_selfplay_games, device, max_moves
     )
+    print(f"✅ Self-play data generated: {len(new_selfplay_data)} samples")
     import time; time.sleep(sleep_time)
     dataloader = None
-    if new_selfplay_data and hasattr(dataset, "extend"):
-        dataset.extend(new_selfplay_data)
-        loader_kwargs = {
-            "batch_size": batch_size,
-            "pin_memory": pin_memory,
-            "num_workers": num_workers,
-        }
-        dataloader = DataLoader(
-            dataset,
-            shuffle=True,
-            **(
-                {"persistent_workers": True, "prefetch_factor": 2}
-                if num_workers > 0 else {}
-            ),
-            **loader_kwargs,
-        )
-        print(f"✅ {len(new_selfplay_data)} self-play games added to training set.")
-    elif new_selfplay_data:
-        print("⚠️ Dataset does not support extension; self-play data ignored.")
+    if new_selfplay_data:
+        if hasattr(dataset, "extend") and callable(dataset.extend):
+            dataset.extend(new_selfplay_data)
+            loader_kwargs = {
+                "batch_size": batch_size,
+                "pin_memory": pin_memory,
+                "num_workers": num_workers,
+            }
+            dataloader = DataLoader(
+                dataset,
+                shuffle=True,
+                **(
+                    {"persistent_workers": True, "prefetch_factor": 2}
+                    if num_workers > 0 else {}
+                ),
+                **loader_kwargs,
+            )
+            print(f"✅ {len(new_selfplay_data)} self-play games successfully added to dataset and new DataLoader created.")
+        else:
+            print("⚠️ Dataset does not support extension method; self-play data ignored.")
     else:
         print("⚠️ No self-play games generated.")
     return dataloader
@@ -249,8 +252,10 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         else:
             accuracy = 0.0
         writer.add_scalar("Metrics/Accuracy", accuracy, epoch)
-        writer.add_scalar("Metrics/AvgReward", total_reward / len(dataloader.dataset), epoch)
-        avg_reward = total_reward / len(dataloader.dataset)
+        # avg_reward: average reward per sample in this epoch (total_reward is sum of game outcomes)
+        avg_reward = total_reward / len(dataloader.dataset) if len(dataloader.dataset) > 0 else 0
+        writer.add_scalar("Metrics/AvgReward", avg_reward, epoch)
+        # score uses total_reward (sum of game outcomes) scaled by dataset size
         score = (accuracy * 100) - (total_loss * 0.5) + (avg_reward * 10)
         score = max(0, min(score, 100))
         writer.add_scalar("Metrics/TrainingScore", score, epoch)
@@ -261,12 +266,13 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         print(f"\n🧠 Training Report — Epoch {epoch+1}")
         print(f"🎯 Accuracy: {accuracy * 100:.2f}%")
         print(f"📉 Loss: {total_loss:.4f}")
-        print(f"🏋️‍♂️ Reward: {avg_reward:.4f}")
+        print(f"🏋️‍♂️ Avg Reward: {avg_reward:.4f} (total_reward = sum of game outcomes in this epoch)")
         print(f"📈 Score: {score:.2f}/100\n")
         summary_msg = (
             f"🏁 Epoch {epoch+1} finished\n"
             f"🎯 Accuracy: {accuracy * 100:.2f}%\n"
             f"📉 Loss: {total_loss:.4f}\n"
+            f"🏋️‍♂️ Avg Reward: {avg_reward:.4f} (total_reward = sum of game outcomes in this epoch)\n"
             f"📈 Score: {score:.2f}/100"
         )
         send_telegram_message(summary_msg)
@@ -274,7 +280,7 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         cos_scheduler.step(epoch + 1)
         writer.add_scalar("Hyperparams/LearningRate", optimizer.param_groups[0]["lr"], epoch)
         all_losses.append(total_loss)
-        all_rewards.append(total_reward / len(dataloader.dataset))
+        all_rewards.append(avg_reward)
         all_accuracies.append(accuracy)
         all_scores.append(score)
         if preds_policy.numel() > 0:
@@ -284,11 +290,11 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         for name, param in model.named_parameters():
             writer.add_histogram(f"Weights/{name}", param, epoch)
         logger.info(
-            "Epoch %s/%s - Loss: %.4f - avg Reward: %.4f",
+            "Epoch %s/%s - Loss: %.4f - avg Reward: %.4f (total_reward = sum of game outcomes)",
             epoch + 1,
             epochs,
             total_loss,
-            total_reward / len(dataloader.dataset),
+            avg_reward,
         )
     model.eval()
     writer.flush()
