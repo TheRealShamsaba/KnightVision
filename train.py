@@ -192,7 +192,7 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     best_val_loss = float('inf')
     epochs_no_improve = 0
     # Quick test: disable self-play entirely
-    num_selfplay_games = 0
+    num_selfplay_games = int(os.getenv("NUM_SELFPLAY_GAMES", "0"))    
     sleep_time = 0.0
     max_moves = None
     print("Starting training...")
