@@ -538,34 +538,29 @@ send_telegram_message("🚀 Training started...")
 
 # Function to capture stdout and stderr during training and send via Telegram in chunks
 def capture_and_train():
-    import io
-    import contextlib
-    buffer = io.StringIO()
+    # assuming validation_dataset is prepared earlier (e.g., split from training_dataset)
+    print("🔧 Quick test: epochs=1, batch_size=512, pin_memory=False, num_workers=4")
     try:
-        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
-            # assuming validation_dataset is prepared earlier (e.g., split from training_dataset)
-            print("🔧 Quick test: epochs=1, batch_size=512, pin_memory=False, num_workers=0")
-            result = train_with_validation(
-                model=model,
-                optimizer=optimizer,
-                start_epoch=start_epoch,
-                train_dataset=train_dataset,
-                val_dataset=validation_dataset,
-                epochs=1,
-                batch_size=512,
-                device=device,
-                pin_memory=False,
-                num_workers=0
-            )
-            print("✅ Quick test complete: model saved to best_model.pth")
+        result = train_with_validation(
+            model=model,
+            optimizer=optimizer,
+            start_epoch=start_epoch,
+            train_dataset=train_dataset,
+            val_dataset=validation_dataset,
+            epochs=1,
+            batch_size=512,
+            device=device,
+            pin_memory=False,
+            num_workers=4
+        )
+        print("✅ Quick test complete: model saved to best_model.pth")
     except Exception as e:
         msg = f"❌ Training failed: {e}"
         print(msg)
         send_telegram_message(msg)
         print("✅ Telegram message sent.")
         return
-    output = buffer.getvalue()
-    # Send a short summary first, then detailed output in chunks
+    # Send a short summary first
     summary = ""
     if isinstance(result, dict) and result.get("losses") and result.get("accuracies"):
         summary = (
@@ -579,11 +574,6 @@ def capture_and_train():
         summary = "✅ Training completed. Check logs for details."
     send_telegram_message(summary)
     print("✅ Telegram message sent.")
-    # Send output in chunks to avoid Telegram message size limits
-    for i in range(0, len(output), 4000):
-        chunk = output[i:i+4000]
-        send_telegram_message(f"🧾 *Captured Training Output* (part {i//4000 + 1}):\n```{chunk}```")
-        print("✅ Telegram message sent.")
 
 # Main entry point for script execution
 if __name__ == '__main__':
