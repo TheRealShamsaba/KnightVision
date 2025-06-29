@@ -107,6 +107,8 @@ def _init_worker(model_path, device_str, seed):
     if device.type == "cuda":
         torch.cuda.manual_seed_all(seed)
 
+    # Removed optimizer initialization to avoid starting a new optimizer
+
 
 from chessEngine import GameState
 from ai import encode_move
@@ -202,6 +204,13 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
             logger.info("⚠️ Draw detected early; ending game.")
             break
 
+        # Resign condition: if predicted value < threshold after min_moves
+        if move_count > 15 and value_logits.item() < -0.7:
+            logger.warning("⚠️ Resignation triggered by low value prediction.")
+            outcome = -1 if gs.whiteToMove else 1
+            result_reason = "Resignation"
+            break
+
         # # (Future: Batched inference, board symmetries, etc. can be inserted here)
 
         # TODO: Dynamically adjust max_moves as model strength improves
@@ -225,6 +234,9 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
     if maxed_out:
         outcome = 0  # Treat as draw
         result_reason = f"Max moves ({max_moves}) reached"
+    elif 'outcome' in locals() and 'result_reason' in locals():
+        # resignation outcome already set
+        pass
     elif gs.inCheck() and len(gs.getValidMoves()) == 0:
         # Checkmate
         outcome = 1 if not gs.whiteToMove else -1
@@ -247,7 +259,7 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
         else:
             outcome = 0
         result_reason = "Material-based final evaluation"
-    logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", game_idx + 1, len(game_data), outcome)
+    logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s (%s)", game_idx + 1, len(game_data), outcome, result_reason)
     logger.debug("🧠 RAM usage: %s%%", psutil.virtual_memory().percent)
     if torch.cuda.is_available():
         logger.debug("💾 VRAM: %.2f MB", torch.cuda.memory_allocated(device) / 1024 ** 2)
@@ -306,4 +318,13 @@ def piece_value(piece):
 def generate_self_play_data(model: nn.Module, num_games: int, device: torch.device, max_moves: int = None) -> List[Tuple[Any, int, float]]:
     global _shared_model
     _shared_model = model
-    return self_play(model, num_games, device, max_moves)
+    data = self_play(model, num_games, device, max_moves)
+    # Filter for decisive games only (win or loss)
+    decisive_data = [record for record in data if record[2] == 1.0 or record[2] == -1.0]
+    MIN_DECISIVE_GAMES = 10
+    if len(decisive_data) < MIN_DECISIVE_GAMES:
+        print(f"⚠️ Only {len(decisive_data)} decisive games generated; consider generating more or adjusting parameters.")
+    else:
+        print(f"✅ Using {len(decisive_data)} decisive self-play games for training.")
+        data = decisive_data
+    return data

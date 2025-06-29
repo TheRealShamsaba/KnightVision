@@ -109,7 +109,12 @@ def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler,
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         epochs_no_improve = 0
-        torch.save(model.state_dict(), os.path.join(checkpoint_dir, "best_model.pth"))
+        torch.save({
+            'epoch': epoch + 1,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': val_loss,
+        }, os.path.join(checkpoint_dir, "best_model.pth"))
         send_telegram_message(f"✅ New best model saved with val loss {val_loss:.4f}")
     else:
         epochs_no_improve += 1
@@ -169,6 +174,8 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     print(f"✅ DataLoaders created: {len(train_dataset)} train, {len(val_dataset)} val samples")
     dataloader = train_loader
     dataset = train_dataset
+    # Number of epochs to use PGN data only before introducing self-play
+    NUM_PGN_EPOCHS = 5  # Number of epochs to use PGN data only
     writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
     tf_log_dir = os.path.join(BASE_DIR, "runs", run_name, "tf_logs")
     tf_writer = tf.summary.create_file_writer(tf_log_dir)
@@ -215,6 +222,32 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
                 'loss': None,
             }, os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth"))
             send_telegram_message(f"📦 Checkpoint saved — Epoch {epoch+1}")
+
+        # --- DataLoader selection: PGN only for first NUM_PGN_EPOCHS epochs ---
+        if epoch < NUM_PGN_EPOCHS:
+            dataloader = train_loader  # Use PGN data only
+            print(f"✅ Epoch {epoch+1}: Using PGN dataset only (pre-training).")
+        else:
+            # After NUM_PGN_EPOCHS, use self-play data if available
+            new_dataloader = None
+            new_dataloader = _run_self_play(
+                model=model,
+                num_selfplay_games=num_selfplay_games,
+                device=device,
+                sleep_time=sleep_time,
+                max_moves=max_moves,
+                dataset=dataset,
+                batch_size=batch_size,
+                pin_memory=pin_memory,
+                num_workers=num_workers,
+                DataLoader=DataLoader
+            )
+            if new_dataloader is not None:
+                dataloader = new_dataloader  # Switch to self-play if available
+            else:
+                dataloader = train_loader
+            print(f"✅ Epoch {epoch+1}: Using self-play data mixed in.")
+
         # --- Training ---
         total_loss, loss_policy, loss_value, preds_policy, preds_value, last_moves, total_reward = _train_one_epoch(
             model, dataloader, optimizer, epoch, device, writer, scaler, REWARD_SHAPING_COEF, ENTROPY_COEF, accumulate_steps=accumulate_steps
@@ -225,22 +258,6 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         )
         if early_stop:
             break
-        # --- Self-play ---
-        # Use _run_self_play to generate self-play data and update dataloader
-        new_dataloader = _run_self_play(
-            model=model,
-            num_selfplay_games=num_selfplay_games,
-            device=device,
-            sleep_time=sleep_time,
-            max_moves=max_moves,
-            dataset=dataset,
-            batch_size=batch_size,
-            pin_memory=pin_memory,
-            num_workers=num_workers,
-            DataLoader=DataLoader
-        )
-        if new_dataloader is not None:
-            dataloader = new_dataloader
         # --- Logging ---
         writer.add_scalar("Loss/Total", total_loss, epoch)
         writer.add_scalar("Loss/Policy", loss_policy.item(), epoch)
@@ -481,7 +498,7 @@ model, optimizer, start_epoch = load_or_initialize_model(
     model_class=ChessNet,
     optimizer_class=optim.Adam,
     optimizer_kwargs={'lr': 1e-3},
-    checkpoint_path=resume_checkpoint,
+    model_path=resume_checkpoint,
     device=device
 )
 # Enable multi-GPU data parallelism if available

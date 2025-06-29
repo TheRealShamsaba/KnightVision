@@ -105,7 +105,7 @@ def build_cfg():
             lr=lr
         ),
         device=device,
-        checkpoint_path=os.path.join(checkpoint_dir, "model_latest.pth"),
+        model_path=os.path.join(checkpoint_dir, "model_latest.pth"),
         stockfish=stockfish_cfg
     )
 
@@ -118,7 +118,7 @@ def reinforcement_loop(cfg):
         ChessNet,
         optim.Adam,
         {'lr': cfg.train.lr},
-        cfg.checkpoint_path,
+        cfg.model_path,
         cfg.device
     )
     # Stage 2: prepare dataset and split
@@ -174,15 +174,15 @@ def _load_model_helper(
     model_class,
     optimizer_class,
     optimizer_kwargs,
-    checkpoint_path,
+    model_path,
     device
 ):
-    logger.info(f"🔄 Loading model from {checkpoint_path}…")
+    logger.info(f"🔄 Loading model from {model_path}…")
     model, optimizer, start_epoch = load_or_initialize_model(
         model_class=model_class,
         optimizer_class=optimizer_class,
         optimizer_kwargs=optimizer_kwargs,
-        checkpoint_path=checkpoint_path,
+        model_path=model_path,
         device=device
     )
     model.to(device)
