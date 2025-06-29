@@ -93,7 +93,10 @@ def _init_worker(model_path, device_str, seed):
     # load and prepare model
     m = ChessNet().to(device)
     checkpoint = torch.load(model_path, map_location=device)
-    m.load_state_dict(checkpoint["model_state_dict"])
+    if "model_state_dict" in checkpoint:
+        m.load_state_dict(checkpoint["model_state_dict"])
+    else:
+        m.load_state_dict(checkpoint)
     m.eval()
     _shared_model = m
 
