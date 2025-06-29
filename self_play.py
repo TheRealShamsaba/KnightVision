@@ -125,7 +125,7 @@ if __name__ == '__main__':
     model.eval()
 
 
-def _run_single_game(game_idx, sleep_time, max_moves):
+def _run_single_game(game_idx, sleep_time, max_moves=80):
     global _shared_model, device, logger
     model = _shared_model
     logger.info("🕹️ Starting game %s", game_idx + 1)
@@ -134,6 +134,7 @@ def _run_single_game(game_idx, sleep_time, max_moves):
     game_data = []
     move_count = 0
     maxed_out = False
+    buffer = []
 
     while True:  # Continue until the game ends naturally or max moves reached
         valid_moves = gs.getValidMoves()
@@ -142,26 +143,23 @@ def _run_single_game(game_idx, sleep_time, max_moves):
             break
 
         # Accumulate for batched inference
-        if not hasattr(_run_single_game, "_buffer"):
-            _run_single_game._buffer = []
-        _run_single_game._buffer.append(encode_board(gs.board))
+        buffer.append(encode_board(gs.board))
         # When buffer full or last move, run batch
-        if len(_run_single_game._buffer) >= BATCH_SIZE:
-            batch_np = np.stack(_run_single_game._buffer, axis=0).astype(np.float32)
-            batch_tensor = torch.from_numpy(batch_np).to(device)
+        if len(buffer) >= BATCH_SIZE:
             with torch.no_grad():
+                batch_np = np.stack(buffer, axis=0).astype(np.float32)
+                batch_tensor = torch.from_numpy(batch_np).to(device)
                 batch_policy, batch_value = model(batch_tensor)
-            # Store back for each entry
-            _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
-            _run_single_game._buffer.clear()
+                _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
+                buffer.clear()
         # Ensure we have inference outputs before retrieving
         if not hasattr(_run_single_game, "_last_outputs"):
-            batch_np = np.stack(_run_single_game._buffer, axis=0).astype(np.float32)
-            batch_tensor = torch.from_numpy(batch_np).to(device)
             with torch.no_grad():
+                batch_np = np.stack(buffer, axis=0).astype(np.float32)
+                batch_tensor = torch.from_numpy(batch_np).to(device)
                 batch_policy, batch_value = _shared_model(batch_tensor)
-            _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
-            _run_single_game._buffer.clear()
+                _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
+                buffer.clear()
         # Retrieve last output
         policy_logits = torch.from_numpy(_run_single_game._last_outputs[0][-1]).unsqueeze(0)
         value_logits = torch.from_numpy(_run_single_game._last_outputs[1][-1]).unsqueeze(0)
@@ -196,7 +194,13 @@ def _run_single_game(game_idx, sleep_time, max_moves):
         gs.makeMove(move)
         move_count += 1
 
+        if gs.isDraw():
+            logger.info("⚠️ Draw detected early; ending game.")
+            break
+
         # # (Future: Batched inference, board symmetries, etc. can be inserted here)
+
+        # TODO: Dynamically adjust max_moves as model strength improves
 
         # enforce move limit (only if a max_moves value was provided)
         if max_moves is not None and move_count >= max_moves:
@@ -204,17 +208,14 @@ def _run_single_game(game_idx, sleep_time, max_moves):
             maxed_out = True
             break
 
-        if sleep_time:
-            time.sleep(sleep_time)
-
     # Flush any remaining batched boards for final moves
-    if hasattr(_run_single_game, "_buffer") and _run_single_game._buffer:
-        batch_np = np.stack(_run_single_game._buffer, axis=0).astype(np.float32)
-        batch_tensor = torch.from_numpy(batch_np).to(device)
+    if buffer:
         with torch.no_grad():
+            batch_np = np.stack(buffer, axis=0).astype(np.float32)
+            batch_tensor = torch.from_numpy(batch_np).to(device)
             batch_policy, batch_value = _shared_model(batch_tensor)
-        _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
-        _run_single_game._buffer.clear()
+            _run_single_game._last_outputs = (batch_policy.cpu().numpy(), batch_value.cpu().numpy())
+            buffer.clear()
 
     # Determine outcome, with max-move override
     if maxed_out:
@@ -236,11 +237,18 @@ def _run_single_game(game_idx, sleep_time, max_moves):
         # Material-based score for early termination
         white_material = sum(piece_value(p) for r in gs.board for p in r if p.isupper())
         black_material = sum(piece_value(p) for r in gs.board for p in r if p.islower())
-        if white_material == black_material:
-            outcome = 0
+        material_diff = abs(white_material - black_material)
+        if material_diff >= 12:
+            logger.warning(f"⚠️ Early resignation triggered due to material diff ({material_diff}); ending game.")
+            maxed_out = True
+            outcome = 0.5
+            result_reason = f"Early resignation due to material difference ({material_diff})"
         else:
-            outcome = (white_material - black_material) / max(white_material, black_material)
-        result_reason = "Material difference"
+            if white_material == black_material:
+                outcome = 0
+            else:
+                outcome = (white_material - black_material) / max(white_material, black_material)
+            result_reason = "Material difference"
     logger.info("✅ Game %s complete. Moves played: %s | Outcome: %s", game_idx + 1, len(game_data), outcome)
     logger.debug("🧠 RAM usage: %s%%", psutil.virtual_memory().percent)
     if torch.cuda.is_available():
@@ -293,4 +301,3 @@ def generate_self_play_data(model: nn.Module, num_games: int, device: torch.devi
     global _shared_model
     _shared_model = model
     return self_play(model, num_games, device, max_moves)
-
