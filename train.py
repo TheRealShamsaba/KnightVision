@@ -109,12 +109,13 @@ def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler,
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         epochs_no_improve = 0
+        from datetime import datetime
         torch.save({
             'epoch': epoch + 1,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': val_loss,
-        }, os.path.join(checkpoint_dir, "best_model.pth"))
+        }, f"/content/drive/MyDrive/KnightVision/checkpoints/best_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
         send_telegram_message(f"✅ New best model saved with val loss {val_loss:.4f}")
     else:
         epochs_no_improve += 1
@@ -218,13 +219,17 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     for epoch in range(start_epoch, epochs):
         send_telegram_message(f"🚀 Starting epoch {epoch+1}")
         if (epoch + 1) % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}.pth"))
+            from datetime import datetime
+            torch.save(
+                model.state_dict(),
+                f"/content/drive/MyDrive/KnightVision/checkpoints/model_epoch_{epoch+1}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth"
+            )
             torch.save({
                 'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': None,
-            }, os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth"))
+            }, f"/content/drive/MyDrive/KnightVision/checkpoints/checkpoint_epoch_LAST_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
             send_telegram_message(f"📦 Checkpoint saved — Epoch {epoch+1}")
 
         # --- DataLoader selection: PGN only for first NUM_PGN_EPOCHS epochs ---
@@ -543,7 +548,7 @@ send_telegram_message("🚀 Training started...")
 # Function to capture stdout and stderr during training and send via Telegram in chunks
 def capture_and_train():
     # assuming validation_dataset is prepared earlier (e.g., split from training_dataset)
-    print("🔧 Quick test: epochs=1, batch_size=512, pin_memory=False, num_workers=4")
+    print(f"🔧 Training: epochs={args.epochs}, batch_size=512, pin_memory=False, num_workers=4")
     try:
         result = train_with_validation(
             model=model,
@@ -551,13 +556,13 @@ def capture_and_train():
             start_epoch=start_epoch,
             train_dataset=train_dataset,
             val_dataset=validation_dataset,
-            epochs=1,
+            epochs=args.epochs,
             batch_size=512,
             device=device,
             pin_memory=False,
             num_workers=4
         )
-        print("✅ Quick test complete: model saved to best_model.pth")
+        print("✅ Training complete: model saved to best_model.pth")
     except Exception as e:
         msg = f"❌ Training failed: {e}"
         print(msg)
