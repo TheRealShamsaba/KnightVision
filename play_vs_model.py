@@ -9,7 +9,7 @@ try:
     drive.mount('/content/drive', force_remount=True)
     BASE_DIR = "/content/drive/MyDrive/KnightVision"
 except (ModuleNotFoundError, AttributeError):
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 from chessEngine import GameState
 import chessMain
 from ai import encode_board, encode_move
@@ -24,7 +24,7 @@ IMAGES = {}
 AI_MOVE_DELAY_MS = 4000  # 4-second delay to allow the player to follow the game
 
 def loadImages():
-    pieces = ["wP", "wR", "wN", "wB", "wQ", "wK", "bP", "bR", "bN", "bB", "bQ", "bK"]
+    pieces = ["wp", "wR", "wN", "wB", "wQ", "wK", "bp", "bR", "bN", "bB", "bQ", "bK"]
     for piece in pieces:
         IMAGES[piece.lower()] = p.transform.scale(p.image.load(os.path.join(BASE_DIR, "images", piece + ".png")), (SQ_SIZE, SQ_SIZE))
 
@@ -59,14 +59,18 @@ def main():
     def get_latest_checkpoint(checkpoint_dir=os.path.join(BASE_DIR, "checkpoints")):
         checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.endswith(".pth")]
         if not checkpoint_files:
-            raise FileNotFoundError("No checkpoint found in 'checkpoints' directory.")
+            raise FileNotFoundError("No checkpoint files (*.pth) found in the 'checkpoints' directory.")
         latest_file = max(checkpoint_files, key=lambda x: os.path.getctime(os.path.join(checkpoint_dir, x)))
         return os.path.join(checkpoint_dir, latest_file)
 
     model = ChessNet()
     try:
         model_path = get_latest_checkpoint()
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
+        if "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            model.load_state_dict(checkpoint)
         print(f"Loaded model from {model_path}")
     except Exception as e:
         print(f"[ERROR] Failed to load model checkpoint: {e}")

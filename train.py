@@ -9,7 +9,7 @@ import os
 import torch.nn.functional as F
 import tensorflow as tf
 from self_play import generate_self_play_data
-
+import argparse
 # --- Evaluation function ---
 def evaluate(model, data_loader, device):
     model.eval()
@@ -156,9 +156,13 @@ def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dat
         print("⚠️ No self-play games generated.")
     return dataloader
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--epochs", type=int, default=5, help="Number of total epochs to train")
+args = parser.parse_args()
 
+num_epochs = args.epochs
 # === New train_with_validation function ===
-def train_with_validation(model, optimizer, start_epoch, train_dataset, val_dataset, epochs=2, batch_size=2048, device='cpu', pin_memory=False, num_workers=0):
+def train_with_validation(model, optimizer, start_epoch, train_dataset, val_dataset, epochs=num_epochs, batch_size=2048, device='cpu', pin_memory=False, num_workers=0):
     from torch.cuda.amp import GradScaler
     scaler = GradScaler()
     # Build DataLoader kwargs
