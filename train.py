@@ -485,7 +485,7 @@ def custom_collate(batch):
 import sys
 from model_utils import load_or_initialize_model
 
-games_path = os.path.join(BASE_DIR, "data", "games.jsonl")
+games_path = "/content/drive/MyDrive/KnightVision/data/games.jsonl"
 # Check if file exists and is non-empty before proceeding
 if not os.path.isfile(games_path) or os.path.getsize(games_path) == 0:
     msg = f"❌ Dataset file not found or empty: {games_path}"
