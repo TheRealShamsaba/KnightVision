@@ -533,7 +533,7 @@ if torch.cuda.device_count() > 1:
     logger.info(f"🌐 Using DataParallel on {torch.cuda.device_count()} GPUs")
     model = torch.nn.DataParallel(model)
 print("✅ Model initialized")
-training_dataset = ChessPGNDataset(games_path, max_samples=5000000)
+training_dataset = ChessPGNDataset(games_path, max_samples=2000000)
 print(f"✅ Dataset instantiated: {len(training_dataset)} samples")
 if len(training_dataset) == 0:
     msg = f"❌ Dataset loaded but contains 0 samples: {games_path}"
