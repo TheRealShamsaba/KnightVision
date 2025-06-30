@@ -526,7 +526,7 @@ model, optimizer, start_epoch = load_or_initialize_model(
     model_class=ChessNet,
     optimizer_class=optim.Adam,
     optimizer_kwargs={'lr': 1e-3},
-    model_path=resume_checkpoint,
+    model_path=None,
     device=device
 )
 # Enable multi-GPU data parallelism if available
