@@ -139,7 +139,7 @@ def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dat
     if elapsed > MAX_ALLOWED_TIME:
         send_telegram_message(f"⚠️ Self-play took too long ({elapsed:.1f}s). Possible hang or crash risk!")
     print(f"✅ Self-play data generated: {len(new_selfplay_data)} samples")
-    import time; time.sleep(sleep_time)
+    time.sleep(sleep_time)
     dataloader = None
     if new_selfplay_data:
         if hasattr(dataset, "extend") and callable(dataset.extend):
@@ -379,7 +379,8 @@ except ImportError:
 BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 run_name = "chess_rl_v2"
 checkpoint_dir = os.path.join(BASE_DIR, "runs", run_name, "checkpoints")
-resume_checkpoint = os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth")
+# Force resume_checkpoint to a specific Google Drive path
+resume_checkpoint = "/content/drive/MyDrive/KnightVision/runs/chess_rl_v2/checkpoints/checkpoint_epoch_LAST.pth"
 os.makedirs(checkpoint_dir, exist_ok=True)
 import torch
 try:
