@@ -21,7 +21,7 @@ SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 15  # for animations
 IMAGES = {}
 
-AI_MOVE_DELAY_MS = 4000  # 4-second delay to allow the player to follow the game
+AI_MOVE_DELAY_MS = 400  # 4-second delay to allow the player to follow the game
 
 def loadImages():
     pieces = ["wp", "wR", "wN", "wB", "wQ", "wK", "bp", "bR", "bN", "bB", "bQ", "bK"]
@@ -62,10 +62,10 @@ def main():
             raise FileNotFoundError("No checkpoint files (*.pth) found in the 'checkpoints' directory.")
         latest_file = max(checkpoint_files, key=lambda x: os.path.getctime(os.path.join(checkpoint_dir, x)))
         return os.path.join(checkpoint_dir, latest_file)
-
+        
     model = ChessNet()
     try:
-        model_path = get_latest_checkpoint()
+        model_path = os.path.join(BASE_DIR, "checkpoints", "best_model_20250629_220833.pth")
         checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
         if "model_state_dict" in checkpoint:
             model.load_state_dict(checkpoint["model_state_dict"])

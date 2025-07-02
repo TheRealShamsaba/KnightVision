@@ -28,7 +28,7 @@ images/
 
 # === Checkpoints and training artifacts ===
 checkpoints/
-*.pth
+
 *.pt
 *.zip
 

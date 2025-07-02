@@ -23,7 +23,7 @@ initialize a global dic of images. this will be called exactly once in the main
 def Load_Images():
     pieces = ['wp', 'wR', 'wN', 'wB', 'wQ', 'wK', 'bp', 'bR', 'bN', 'bB', 'bQ', 'bK']
     for piece in pieces:
-        IMAGES[piece] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE))
+        IMAGES[piece.lower()] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE))
     #Note: we can access an image by sayin 'IMAGES['wp'] 
     
 def main():
