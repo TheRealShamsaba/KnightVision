@@ -1,7 +1,7 @@
 # ♟️ KnightVision — Reinforcement Learning-based Chess Engine
 
 KnightVision is an advanced chess engine combining classic move-generation logic with modern deep learning and reinforcement learning. Built to learn and adapt, it continuously improves through self-play and data-driven training.
-
+📄 **Thesis**: [📘 Read the full graduation report](https://drive.google.com/file/d/1WmA_4Vbek0yzG7596a_SsLYBHnRwpR9f/view?usp=sharing)
 ---
 
 ## 🚀 Overview
