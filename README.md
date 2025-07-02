@@ -1,71 +1,103 @@
-bekir
- # basicChess
-+
-+This project contains a simple chess game and a reinforcement learning setup for training a model to play.
-+
-+## Dependencies
-+
-+- Python 3.11+
-+- pygame
-+- torch
-+- numpy
-+- tensorboard
-+
-+Install them with:
-+
-+```bash
-+pip install pygame torch numpy tensorboard
-+```
-+
-+## Running the Game
-+
-+Launch the graphical game interface with:
-+
-+```bash
-+python chessMain.py
-+```
-+
-+Click pieces to move them. Press `Z` to undo the last move.
-+
-+## Training the Model
-+
-+The reinforcement loop that generates self‑play games and trains the network is in `learn.py`:
-+
-+```bash
-+python learn.py
-+```
-+
-+It saves the trained weights to `model.pth` and logs metrics under `runs/`. View logs using TensorBoard:
-+
-+```bash
-+tensorboard --logdir runs
-+```
-+
-+You can also run the components individually:
-+
-+```bash
-+python self_play.py   # create training data
-+python train.py       # train using existing data
-+```
-+The `train_model` function expects `data` to be a list of `(board_tensor, move_index, outcome)` tuples. If a `Dataset` is passed it will be converted to a list so new self-play games can be appended during training.
-+
-+## Files
-+
-+- `chessMain.py` – pygame interface for playing chess
-+- `chessEngine.py` – game state and move validation
-+- `model.py` – PyTorch neural network
-+- `self_play.py` – generates data via self-play
-+- `train.py` – training utilities
-+- `learn.py` – orchestrates self-play and training
+# ♟️ KnightVision — Reinforcement Learning-based Chess Engine
 
+KnightVision is an advanced chess engine combining classic move-generation logic with modern deep learning and reinforcement learning. Built to learn and adapt, it continuously improves through self-play and data-driven training.
 
-=======
-## Telegram Notifications
+---
 
-Training utilities can optionally send progress updates through a Telegram bot. Configure these variables in your environment or `.env` file:
+## 🚀 Overview
 
-- `TELEGRAM_BOT_TOKEN` – bot API token
-- `TELEGRAM_CHAT_ID` – chat ID that receives notifications
-- `TELEGRAM_ENABLED` – set to `0` to disable messages (defaults to `1`)
-- `TELEGRAM_NOTIFY_INTERVAL` – minimum seconds between messages
->>>>>>> codex/add-configurable-flag-for-telegram-notifications
+* 🧠 **Custom Neural Network** with policy and value heads
+* ♻️ **Reinforcement Learning** via self-play and human PGN data
+* 📈 **TensorBoard integration** for tracking progress
+* 🗂️ **PGN parsing pipeline** for large-scale datasets
+
+---
+
+## ✨ Features
+
+✅ Fully custom neural architecture
+✅ Self-play loop with reinforcement updates
+✅ PGN parsing and JSONL dataset support
+✅ Telegram live reporting
+✅ Flexible configuration and experiments
+
+---
+
+## 📁 Project Structure
+
+```bash
+
+├── basicChess/        # Core engine, model, and training scripts
+├── data/             # Datasets and checkpoints
+├── runs/             # TensorBoard logs
+├── requirements.txt  # Dependencies
+└── README.md
+```
+
+---
+
+## ⚙️ Installation
+
+```bash
+git clone https://github.com/yourusername/KnightVision.git
+cd KnightVision
+pip install -r requirements.txt
+```
+
+---
+
+## 🚀 Usage
+
+```bash
+python train.py        # Start supervised or initial training
+python learn.py        # Run full reinforcement learning loop
+python play_vs_model.py  # Play against the engine
+```
+
+---
+
+## 🗺️ Roadmap
+
+### ✅ Completed
+
+* PGN parsing & dataset integration
+* Basic move legality and board logic
+* Initial supervised training
+* Self-play reinforcement learning
+
+### 🚧 In Progress
+
+* Advanced pruning & evaluation techniques
+* Web UI for online play and analysis
+* Further architecture tuning & experiments
+
+### 💡 Future Ideas
+
+* Real-time online ladder system
+* Adaptive style learning against different opponents
+* Detailed game analysis and commentary features
+
+---
+
+## 🤝 Contributing
+
+Pull requests and issues are welcome! Let’s build better chess intelligence together.
+
+---
+
+## 🧑‍💻 Author
+
+https://github.com/TheRealShamsaba
+https://github.com/BakerDmo
+
+---
+
+## ⭐️ Support
+
+If you like this project, give it a ⭐️ to help it grow!
+
+---
+
+## 📄 License
+
+MIT License
