@@ -167,7 +167,7 @@ def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dat
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=5, help="Number of total epochs to train")
-args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 
 num_epochs = args.epochs
 # === New train_with_validation function ===
