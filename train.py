@@ -260,7 +260,7 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
             new_dataloader = _run_self_play(
                 model=model,
                 num_selfplay_games=num_selfplay_games,
-                device=device,
+                device="cpu",
                 sleep_time=sleep_time,
                 max_moves=max_moves,
                 dataset=dataset,
