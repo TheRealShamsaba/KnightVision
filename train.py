@@ -171,7 +171,7 @@ def _train_one_epoch(model, dataloader, optimizer, epoch, device, writer, scaler
             print(f"Epoch {epoch+1} | Batch {i+1}/{num_batches} | Loss: {loss.item() * accumulate_steps:.4f} | GPU Mem: {torch.cuda.memory_allocated(device) / 1e6:.1f}MB")
     return total_loss, loss_policy, loss_value, preds_policy, preds_value, last_moves, total_reward
 
-def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler, best_val_loss, epochs_no_improve, PATIENCE):
+def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler, checkpoint_dir, best_val_loss, epochs_no_improve, PATIENCE, send_telegram_message):
     val_loss = evaluate(model, val_loader, device)
     writer.add_scalar("Val/Loss", val_loss, epoch)
     plateau_scheduler.step(val_loss)
@@ -185,7 +185,7 @@ def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': val_loss,
-        }, best_checkpoint_path)
+        }, os.path.join(checkpoint_dir, 'best_model.pth'))
         send_telegram_message(f"✅ New best model saved with val loss {val_loss:.4f}")
     else:
         epochs_no_improve += 1
