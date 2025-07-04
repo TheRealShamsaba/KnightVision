@@ -1,8 +1,12 @@
+import os
+import warnings
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+warnings.filterwarnings("ignore")
 print("Training script loaded...")
 import threading
 import time
 import sys
-import os
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -255,7 +259,7 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     dataloader = train_loader
     dataset = train_dataset
     # Number of epochs to use PGN data only before introducing self-play
-    NUM_PGN_EPOCHS = 5  # Number of epochs to use PGN data only
+    NUM_PGN_EPOCHS = 15  # Number of epochs to use PGN data only
     writer = SummaryWriter(log_dir=os.path.join(logs_dir, "tensorboard"))
     tf_log_dir = os.path.join(logs_dir, "tf_logs")
     tf_writer = tf.summary.create_file_writer(tf_log_dir)
@@ -519,7 +523,7 @@ class ChessPGNDataset(torch.utils.data.Dataset):
     def extend(self, new_records):
         self.additional_data.extend(new_records)
 
-training_dataset = ChessPGNDataset(games_path, max_samples=2000000)
+training_dataset = ChessPGNDataset(games_path, max_samples=5000000)
 val_ratio = float(os.getenv("VAL_RATIO", "0.1"))
 val_size = int(len(training_dataset) * val_ratio)
 train_size = len(training_dataset) - val_size
