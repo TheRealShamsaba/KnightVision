@@ -256,27 +256,35 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
 
 
 def self_play(model, num_games, device, max_moves=None, model_path=None):
-    if model_path is None:
-        raise ValueError("model_path must be provided explicitly.")
+    if model is None and model_path is None:
+        raise ValueError("Either a model instance or model_path must be provided.")
     logger.info("Starting self-play with %s games...", num_games)
     data = []
     SEQUENTIAL = os.getenv("SELFPLAY_SEQ", "0") == "1"
     WORKERS = int(os.getenv("SELFPLAY_WORKERS", str(min(num_games, os.cpu_count() or 1))))
-    if SEQUENTIAL or WORKERS <= 1:
-        logger.info("🔁 Running self-play sequentially with %s games", num_games)
-        _init_worker(model_path, device.type, SEED)
-        results = [_run_single_game(idx, 0.0, max_moves) for idx in range(num_games)]
+    global _shared_model
+    if model_path is not None:
+        # Load model from checkpoint path
+        if SEQUENTIAL or WORKERS <= 1:
+            logger.info("🔁 Running self-play sequentially with %s games", num_games)
+            _init_worker(model_path, device.type, SEED)
+            results = [_run_single_game(idx, 0.0, max_moves) for idx in range(num_games)]
+        else:
+            logger.info("🔁 Running self-play in parallel with %s workers", WORKERS)
+            pool = mp.Pool(
+                processes=WORKERS,
+                initializer=_init_worker,
+                initargs=(model_path, device.type, SEED)
+            )
+            tasks = [(idx, 0.0, max_moves) for idx in range(num_games)]
+            results = pool.starmap(_run_single_game, tasks)
+            pool.close()
+            pool.join()
     else:
-        logger.info("🔁 Running self-play in parallel with %s workers", WORKERS)
-        pool = mp.Pool(
-            processes=WORKERS,
-            initializer=_init_worker,
-            initargs=(model_path, device.type, SEED)
-        )
-        tasks = [(idx, 0.0, max_moves) for idx in range(num_games)]
-        results = pool.starmap(_run_single_game, tasks)
-        pool.close()
-        pool.join()
+        # Use the provided model instance directly
+        _shared_model = model
+        logger.info("🔁 Running self-play sequentially with %s games (model instance provided)", num_games)
+        results = [_run_single_game(idx, 0.0, max_moves) for idx in range(num_games)]
     for idx, game_data in results:
         data.extend(game_data)
     logger.info("✅ Completed all self-play games: %s/%s", num_games, num_games)
@@ -290,8 +298,7 @@ def piece_value(piece):
 
 
 def generate_self_play_data(model: nn.Module, num_games: int, device: torch.device, max_moves: int = None) -> List[Tuple[Any, int, float]]:
-    global _shared_model
-    _shared_model = model
+    # The self_play function now handles whether to use a model instance or model_path.
     data = self_play(model, num_games, device, max_moves)
     # Filter for decisive games only (win or loss)
     decisive_data = [record for record in data if record[2] == 1.0 or record[2] == -1.0]
