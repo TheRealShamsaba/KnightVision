@@ -1,10 +1,6 @@
 import chess
 import os
 from typing import Union, List
-if "COLAB_GPU" in os.environ:
-    BASE_DIR = "/content/drive/MyDrive/KnightVision"
-else:
-    BASE_DIR = os.environ.get("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import numpy as np
 

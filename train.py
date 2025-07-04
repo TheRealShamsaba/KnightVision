@@ -5,13 +5,82 @@ import sys
 import os
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
-import os
 import torch.nn.functional as F
 import tensorflow as tf
+from datetime import datetime
 from self_play import generate_self_play_data
+from telegram_utils import send_telegram_message
+from model_utils import load_or_initialize_model
+from model import ChessNet
 import argparse
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+import logging
+import chess
+import chess.pgn
+from torch.utils.data import Dataset, DataLoader, random_split
+import torch.nn
+import random
+import json
+import numpy as np
+from torch.cuda.amp import GradScaler
+import google.colab
+from torch.utils.tensorboard import SummaryWriter
+import torch.multiprocessing
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+# Ensure NUM_SELFPLAY_GAMES is set in the environment with a default of "50"
+os.environ["NUM_SELFPLAY_GAMES"] = os.getenv("NUM_SELFPLAY_GAMES", "50")
+
+
+BASE_SESSIONS_DIR = "/content/drive/MyDrive/KnightVision/sessions"
+
+def create_new_session_dir():
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_dir = os.path.join(BASE_SESSIONS_DIR,f"run_{timestamp}")
+    os.makedirs(run_dir, exist_ok=True)
+    os.makedirs(os.path.join(run_dir,"checkpoints"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir,"logs"), exist_ok=True)
+    return run_dir
+
+def find_last_session_dir():
+    runs = [os.path.join(BASE_SESSIONS_DIR, d) for d in os.listdir(BASE_SESSIONS_DIR)]
+    runs = [d for d in runs if os.path.isdir(d)]
+    if not runs:
+        return None
+    runs.sort(key=os.path.getmtime, reverse=True)
+    return runs[0]
+
+# ===config===
+RESUME_LAST_SESSION = os.getenv("RESUME_LAST_SESSION", "False") == "True"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+if RESUME_LAST_SESSION:
+    last_session_dir = find_last_session_dir()
+    if last_session_dir is None:
+        print("❌ No existing session found to resume. Creating new session instead.")
+        session_dir = create_new_session_dir()
+    else:
+        session_dir = last_session_dir
+        print(f"✅ Resuming from last session: {session_dir}")
+else:
+    session_dir = create_new_session_dir()
+    print(f"✅ Starting new session: {session_dir}")
+
+checkpoint_dir = os.path.join(session_dir, "checkpoints")
+logs_dir = os.path.join(session_dir, "logs")
+
+best_checkpoint_path = os.path.join(checkpoint_dir, "best_model.pth")
+last_checkpoint_path = os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth")
+# === TensorBoard writer ===
+
+writer = SummaryWriter(log_dir=os.path.join(logs_dir, "tensorboard"))
+
+# === Dataset ===
+games_path = "/content/drive/MyDrive/KnightVision/data/games.jsonl"
+
 # --- Evaluation function ---
 def evaluate(model, data_loader, device):
     model.eval()
@@ -102,7 +171,7 @@ def _train_one_epoch(model, dataloader, optimizer, epoch, device, writer, scaler
             print(f"Epoch {epoch+1} | Batch {i+1}/{num_batches} | Loss: {loss.item() * accumulate_steps:.4f} | GPU Mem: {torch.cuda.memory_allocated(device) / 1e6:.1f}MB")
     return total_loss, loss_policy, loss_value, preds_policy, preds_value, last_moves, total_reward
 
-def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler, checkpoint_dir, best_val_loss, epochs_no_improve, PATIENCE, send_telegram_message):
+def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler, best_val_loss, epochs_no_improve, PATIENCE):
     val_loss = evaluate(model, val_loader, device)
     writer.add_scalar("Val/Loss", val_loss, epoch)
     plateau_scheduler.step(val_loss)
@@ -111,13 +180,12 @@ def _run_validation(model, val_loader, device, writer, epoch, plateau_scheduler,
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         epochs_no_improve = 0
-        from datetime import datetime
         torch.save({
             'epoch': epoch + 1,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': val_loss,
-        }, f"/content/drive/MyDrive/KnightVision/checkpoints/best_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
+        }, best_checkpoint_path)
         send_telegram_message(f"✅ New best model saved with val loss {val_loss:.4f}")
     else:
         epochs_no_improve += 1
@@ -172,7 +240,6 @@ args, unknown = parser.parse_known_args()
 num_epochs = args.epochs
 # === New train_with_validation function ===
 def train_with_validation(model, optimizer, start_epoch, train_dataset, val_dataset, epochs=num_epochs, batch_size=2048, device='cpu', pin_memory=True, num_workers=8):
-    from torch.cuda.amp import GradScaler
     scaler = GradScaler()
     # Build DataLoader kwargs
     loader_kwargs = {"batch_size": batch_size}
@@ -189,10 +256,10 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     dataset = train_dataset
     # Number of epochs to use PGN data only before introducing self-play
     NUM_PGN_EPOCHS = 5  # Number of epochs to use PGN data only
-    writer = SummaryWriter(log_dir=os.path.join(BASE_DIR, "runs", run_name))
-    tf_log_dir = os.path.join(BASE_DIR, "runs", run_name, "tf_logs")
+    writer = SummaryWriter(log_dir=os.path.join(logs_dir, "tensorboard"))
+    tf_log_dir = os.path.join(logs_dir, "tf_logs")
     tf_writer = tf.summary.create_file_writer(tf_log_dir)
-    print(f"Logging to: runs/{run_name}")
+    print(f"Logging to: {logs_dir}")
     model.train()
     cos_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer,
@@ -207,7 +274,6 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         verbose=True
     )
     # model.to(device) -- moved to main block
-    # torch.backends.cudnn.benchmark = True -- moved to main block
     all_losses = []
     all_rewards = []
     all_accuracies = []
@@ -237,17 +303,16 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         last_epoch_time = time.time()
         send_telegram_message(f"🚀 Starting epoch {epoch+1}")
         if (epoch + 1) % 10 == 0:
-            from datetime import datetime
             torch.save(
                 model.state_dict(),
-                f"/content/drive/MyDrive/KnightVision/checkpoints/model_epoch_{epoch+1}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth"
+                os.path.join(checkpoint_dir, f"model_epoch_{epoch+1}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
             )
             torch.save({
                 'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': None,
-            }, f"/content/drive/MyDrive/KnightVision/checkpoints/checkpoint_epoch_LAST_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
+            }, last_checkpoint_path)
             send_telegram_message(f"📦 Checkpoint saved — Epoch {epoch+1}")
 
         # --- DataLoader selection: PGN only for first NUM_PGN_EPOCHS epochs ---
@@ -354,15 +419,6 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         "accuracies": all_accuracies,
         "scores": all_scores
     }
-import os
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-# Ensure NUM_SELFPLAY_GAMES is set in the environment with a default of "50"
-os.environ["NUM_SELFPLAY_GAMES"] = os.getenv("NUM_SELFPLAY_GAMES", "50")
 
 
 # === RL hyperparameters ===
@@ -372,36 +428,23 @@ LR_STEP_SIZE = int(os.getenv("LR_STEP_SIZE", "10"))
 LR_GAMMA = float(os.getenv("LR_GAMMA", "0.1"))
 IN_COLAB = False
 try:
-    import google.colab
     IN_COLAB = True
 except ImportError:
     IN_COLAB = False
-BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-run_name = "chess_rl_v2"
-checkpoint_dir = os.path.join(BASE_DIR, "runs", run_name, "checkpoints")
-# Force resume_checkpoint to a specific Google Drive path
-resume_checkpoint = "/content/drive/MyDrive/KnightVision/runs/chess_rl_v2/checkpoints/checkpoint_epoch_LAST.pth"
-os.makedirs(checkpoint_dir, exist_ok=True)
-import torch
+    
+checkpoint_dir = os.path.join(session_dir, "checkpoints")
+
 try:
-    import tensorflow as tf
     physical_devices = tf.config.list_physical_devices('GPU')
     if physical_devices:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
         print("✅ TensorFlow GPU memory growth enabled")
 except Exception as e:
     print(f"⚠️ TensorFlow GPU config failed: {e}")
-import torch.nn
-import torch.nn.functional as F
-import torch.optim as optim
-import random
-import logging
-import json
-import numpy as np
+
 
 # === Deterministic seeding for reproducibility ===
 SEED = int(os.getenv("SEED", "42"))
-import random
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
@@ -411,29 +454,19 @@ try:
     tf.random.set_seed(SEED)
 except NameError:
     pass
-import chess
-import chess.pgn
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.data import random_split
-from datetime import datetime
-from telegram_utils import send_telegram_message
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ## Do not set multiprocessing start method globally here; move to main block.
-from torch.utils.tensorboard import SummaryWriter
-
 # Validation & Early-Stopping config
 PATIENCE = int(os.getenv("EARLY_STOPPING_PATIENCE", "5"))
 
 logger = logging.getLogger(__name__)
 
-class ChessPGNDataset(Dataset):
-    def __init__(self, path=os.path.join(BASE_DIR, "data", "games.jsonl"), move_encoder=None, max_samples=10000):
+class ChessPGNDataset(torch.utils.data.Dataset):
+    def __init__(self, path, move_encoder=None, max_samples=10000):
         self.file_path = path
         self.move_encoder = move_encoder or self.default_move_encoder
         self.max_samples = max_samples
         self.additional_data = []
-
-        # Store only the byte offsets for each line for sampling
         self.line_offsets = []
         with open(self.file_path, 'rb') as f:
             offset = 0
@@ -454,21 +487,17 @@ class ChessPGNDataset(Dataset):
         with open(self.file_path, 'r') as f:
             f.seek(offset)
             record = json.loads(f.readline().strip())
-
         fen = record["fen"]
         move_san = record["move"]
         board_tensor = self.fen_to_tensor(fen)
         move_index = self.move_encoder(move_san, fen)
-
         outcome = 1.0 if chess.Board(fen).turn == chess.WHITE else -1.0
         return board_tensor, move_index, outcome
 
     def fen_to_tensor(self, fen):
-        
-        import numpy as np
         board = chess.Board(fen)
         piece_map = board.piece_map()
-        tensor = np.zeros((12,8,8), dtype=np.float32)
+        tensor = np.zeros((12, 8, 8), dtype=np.float32)
         piece_to_plane = {
             'P': 0, 'N': 1, 'B': 2, 'R': 3, 'Q': 4, 'K': 5,
             'p': 6, 'n': 7, 'b': 8, 'r': 9, 'q': 10, 'k': 11
@@ -476,9 +505,10 @@ class ChessPGNDataset(Dataset):
         for square, piece in piece_map.items():
             plane = piece_to_plane[piece.symbol()]
             row = 7 - (square // 8)
-            col = square % 8 
+            col = square % 8
             tensor[plane][row][col] = 1.0
         return tensor
+
     def default_move_encoder(self, move_san, fen):
         board = chess.Board(fen)
         move = board.parse_san(move_san)
@@ -487,13 +517,14 @@ class ChessPGNDataset(Dataset):
         return from_square * 64 + to_square
 
     def extend(self, new_records):
-        """
-        Extend dataset with additional self-play records.
-        new_records: list of (board_tensor, move_index, outcome) tuples.
-        """
         self.additional_data.extend(new_records)
-from model_utils import load_or_initialize_model
-from model import ChessNet
+
+training_dataset = ChessPGNDataset(games_path, max_samples=2000000)
+val_ratio = float(os.getenv("VAL_RATIO", "0.1"))
+val_size = int(len(training_dataset) * val_ratio)
+train_size = len(training_dataset) - val_size
+train_dataset, validation_dataset = random_split(training_dataset, [train_size, val_size])
+print(f"✅ Dataset split: {train_size} train, {val_size} val samples")
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -510,10 +541,6 @@ def custom_collate(batch):
     else:
         return boards, moves, outcomes
 
-import sys
-from model_utils import load_or_initialize_model
-
-games_path = "/content/drive/MyDrive/KnightVision/data/games.jsonl"
 # Check if file exists and is non-empty before proceeding
 if not os.path.isfile(games_path) or os.path.getsize(games_path) == 0:
     msg = f"❌ Dataset file not found or empty: {games_path}"
@@ -534,7 +561,6 @@ if torch.cuda.device_count() > 1:
     logger.info(f"🌐 Using DataParallel on {torch.cuda.device_count()} GPUs")
     model = torch.nn.DataParallel(model)
 print("✅ Model initialized")
-training_dataset = ChessPGNDataset(games_path, max_samples=2000000)
 print(f"✅ Dataset instantiated: {len(training_dataset)} samples")
 if len(training_dataset) == 0:
     msg = f"❌ Dataset loaded but contains 0 samples: {games_path}"
@@ -546,19 +572,9 @@ if len(training_dataset) == 0:
 print("✅ Dataset ready")
 
 
-# Split dataset into training and validation sets
-val_ratio = float(os.getenv("VAL_RATIO", "0.1"))
-val_size = int(len(training_dataset) * val_ratio)
-train_size = len(training_dataset) - val_size
-train_dataset, validation_dataset = random_split(training_dataset, [train_size, val_size])
 print(f"✅ Dataset split: {train_size} train, {val_size} val samples")
 
-
-
-
-
 # Send notification that training started
-
 # Notify that training has started
 
 send_telegram_message("🚀 Training started...")
@@ -605,7 +621,6 @@ def capture_and_train():
 
 # Main entry point for script execution
 if __name__ == '__main__':
-    import torch.multiprocessing
     if not IN_COLAB:
         torch.multiprocessing.set_start_method('spawn', force=True)
     # Move CUDA setup here

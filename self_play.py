@@ -5,8 +5,6 @@ import time
 import numpy as np
 import multiprocessing as mp
 import glob
-# Ensure BASE_DIR is defined for all module contexts
-BASE_DIR = os.getenv("BASE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # Force 'fork' start method for multiprocessing (important for PyTorch and avoiding heavy import re-execution)
 if mp.get_start_method(allow_none=True) != 'fork':
     mp.set_start_method('fork', force=True)
@@ -65,30 +63,9 @@ def _init_worker(model_path, device_str, seed):
     global logger
     logger = logging.getLogger(__name__)
 
-    # Auto-discover checkpoint if original path missing
+    # Check if model_path exists
     if not os.path.exists(model_path):
-        base = os.getenv("BASE_DIR", BASE_DIR)
-        checkpoints_dir = os.path.join(base, "runs", "chess_rl_v2", "checkpoints")
-        found = glob.glob(os.path.join(checkpoints_dir, "*.pth"))
-        if found:
-            model_path = max(found, key=os.path.getmtime)
-            print(f"⚠️ _init_worker: auto-selected checkpoint '{model_path}'")
-        else:
-            fallback = os.path.join(base, "checkpoints", "model.pth")
-            if os.path.exists(fallback):
-                model_path = fallback
-                print(f"⚠️ _init_worker: using fallback checkpoint '{model_path}'")
-            else:
-                try:
-                    contents = os.listdir(checkpoints_dir)
-                except Exception:
-                    contents = []
-                raise FileNotFoundError(
-                    f"❌ No model found!\n"
-                    f"  Tried original path: {model_path}\n"
-                    f"  Tried fallback     : {fallback}\n"
-                    f"  {checkpoints_dir} contains: {contents}"
-                )
+        raise FileNotFoundError(f"❌ Specified model checkpoint not found: {model_path}")
 
     # load and prepare model
     m = ChessNet().to(device)
@@ -278,16 +255,13 @@ def _run_single_game(game_idx, sleep_time, max_moves=80):
     return game_idx, game_data_with_outcome
 
 
-def self_play(model, num_games, device, max_moves=None):
+def self_play(model, num_games, device, max_moves=None, model_path=None):
+    if model_path is None:
+        raise ValueError("model_path must be provided explicitly.")
     logger.info("Starting self-play with %s games...", num_games)
     data = []
     SEQUENTIAL = os.getenv("SELFPLAY_SEQ", "0") == "1"
     WORKERS = int(os.getenv("SELFPLAY_WORKERS", str(min(num_games, os.cpu_count() or 1))))
-    candidate = os.path.join(BASE_DIR, "runs", "chess_rl_v2", "checkpoints", "model_latest.pth")
-    if os.path.exists(candidate):
-        model_path = candidate
-    else:
-        model_path = os.path.join(BASE_DIR, "checkpoints", "model.pth")
     if SEQUENTIAL or WORKERS <= 1:
         logger.info("🔁 Running self-play sequentially with %s games", num_games)
         _init_worker(model_path, device.type, SEED)

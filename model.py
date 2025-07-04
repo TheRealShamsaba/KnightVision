@@ -1,27 +1,33 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 # Enable cuDNN autotuner for better performance on fixed-size inputs
 torch.backends.cudnn.benchmark = True
 
 class ResidualBlock(nn.Module):
+    """
+    A standard residual block with two convolutional layers and batch normalization.
+    """
     def __init__(self, channels):
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(channels)
-        self.relu = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
         residual = x
-        out = self.relu(self.bn1(self.conv1(x)))
+        out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += residual
-        out = self.relu(out)
+        out = F.relu(out)
         return out
 
 class ChessNet(nn.Module):
+    """
+    ChessNet architecture with separate policy and value heads, inspired by AlphaZero.
+    """
     def __init__(self, verbose: bool = False):
         super(ChessNet, self).__init__()
         self.verbose = verbose
@@ -43,27 +49,27 @@ class ChessNet(nn.Module):
         self.value_fc2 = nn.Linear(512, 1)
 
     def forward(self, x):
-        # ensure input is on the same device and dtype as the model parameters
+        # Ensure input is on same device and dtype as model parameters
         param = next(self.parameters())
         x = x.to(device=param.device, dtype=param.dtype)
         if self.verbose:
             print("📥 Forward input shape:", x.shape)
-        # Removed autocast to ensure consistent dtype across input and model parameters
-        x = torch.relu(self.bn1(self.conv1(x)))
-        x = torch.relu(self.bn2(self.conv2(x)))
+        # Avoid autocast for explicit dtype control and stability
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
 
         for block in self.res_blocks:
             x = block(x)
 
-        policy = torch.relu(self.policy_bn(self.policy_conv(x)))
+        policy = F.relu(self.policy_bn(self.policy_conv(x)))
         policy = torch.flatten(policy, 1)
         policy = self.policy_fc(policy)
         if self.verbose:
             print("📤 Policy output shape:", policy.shape)
 
-        value = torch.relu(self.value_bn(self.value_conv(x)))
+        value = F.relu(self.value_bn(self.value_conv(x)))
         value = value.view(value.size(0), -1)
-        value = torch.relu(self.value_fc1(value))
+        value = F.relu(self.value_fc1(value))
         value = torch.tanh(self.value_fc2(value))
         if self.verbose:
             print("📤 Value output shape:", value.shape)
