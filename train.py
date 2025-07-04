@@ -480,6 +480,7 @@ class ChessPGNDataset(torch.utils.data.Dataset):
                 self.line_offsets.append(offset)
                 offset += len(line)
         print(f"✅ ChessPGNDataset loaded: {len(self.line_offsets)} samples found in {self.file_path}")
+        print(f"Max samples configured: {self.max_samples}")
 
     def __len__(self):
         return len(self.line_offsets) + len(self.additional_data)
@@ -495,7 +496,14 @@ class ChessPGNDataset(torch.utils.data.Dataset):
         move_san = record["move"]
         board_tensor = self.fen_to_tensor(fen)
         move_index = self.move_encoder(move_san, fen)
-        outcome = 1.0 if chess.Board(fen).turn == chess.WHITE else -1.0
+        result = record.get("result", "1/2-1/2")
+        if result == "1-0":
+            outcome = 1.0
+        elif result == "0-1":
+            outcome = -1.0
+        else:
+            outcome = 0.0
+        print(f"Loaded record idx={idx}, result={result}, outcome={outcome}")
         return board_tensor, move_index, outcome
 
     def fen_to_tensor(self, fen):
@@ -529,6 +537,9 @@ val_size = int(len(training_dataset) * val_ratio)
 train_size = len(training_dataset) - val_size
 train_dataset, validation_dataset = random_split(training_dataset, [train_size, val_size])
 print(f"✅ Dataset split: {train_size} train, {val_size} val samples")
+print(f"Training dataset size: {len(train_dataset)}")
+print(f"Validation dataset size: {len(validation_dataset)}")
+print(f"Expected batches per epoch (train): {len(train_dataset) // 4096}")
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True

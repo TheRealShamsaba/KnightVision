@@ -1,3 +1,17 @@
+# --- Check for already running instance ---
+def check_if_already_running():
+    current_pid = os.getpid()
+    script_name = os.path.basename(__file__)
+    count = 0
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if proc.info['pid'] != current_pid and script_name in ' '.join(proc.info['cmdline']):
+                count += 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+    if count > 0:
+        print("⚠️ Another instance of this script is already running! Exiting to avoid duplication.")
+        sys.exit(1)
 import os
 import sys
 import multiprocessing as mp
@@ -224,6 +238,7 @@ def train_with_validation(model, cfg, train_dataset=None, val_dataset=None):
 
 # --- Main ---
 def main():
+    check_if_already_running()
     mp.set_start_method("spawn", force=True)
 
     if os.getenv("RESUME_LAST_SESSION", "False") == "True":
