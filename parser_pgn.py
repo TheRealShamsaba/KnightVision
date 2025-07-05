@@ -15,9 +15,9 @@ def get_last_parsed_count():
     if os.path.exists(ZST_LOG):
         with open(ZST_LOG, 'r') as f:
             content = f.read().strip()
-            if content and content.isdigit():
+            try:
                 return int(content)
-            else:
+            except (ValueError, TypeError):
                 return 0
     return 0
 
