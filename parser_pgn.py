@@ -9,6 +9,18 @@ load_dotenv()
 configure_logging()
 logger = logging.getLogger(__name__)
 
+ZST_LOG = os.path.join("/content/drive/MyDrive/KnightVision/data", "parsed_zst_progress.log")
+
+def get_last_parsed_count():
+    if os.path.exists(ZST_LOG):
+        with open(ZST_LOG, 'r') as f:
+            return int(f.read().strip())
+    return 0
+
+def set_last_parsed_count(count):
+    with open(ZST_LOG, 'w') as f:
+        f.write(str(count))
+
 def send_telegram_message(message):
     if str(os.getenv("ENABLE_TELEGRAM", "true")).lower() in ("false", "0", "no"):
         logger.info("📵 Telegram disabled via ENABLE_TELEGRAM. Skipping message.")
@@ -91,8 +103,9 @@ def extract_data_from_pgn(pgn_path):
     except Exception as e:
         logger.error("Failed to parse %s: %s", pgn_path, e)
 
-def extract_data_from_pgn_zst(zst_path, move_limit=None):
+def extract_data_from_pgn_zst(zst_path, move_limit=None, skip_moves=0):
     count = 0
+    skipped = 0
     dctx = zstd.ZstdDecompressor()
     with open(zst_path, 'rb') as compressed:
         with dctx.stream_reader(compressed) as reader:
@@ -114,11 +127,15 @@ def extract_data_from_pgn_zst(zst_path, move_limit=None):
                     outcome = None
 
                 for move in game.mainline_moves():
+                    if skipped < skip_moves:
+                        skipped += 1
+                        continue
                     fen = board.fen()
                     san = board.san(move)
                     board.push(move)
                     yield {"fen": fen, "move": san, "outcome": outcome}
                     count += 1
+                    set_last_parsed_count(skip_moves + count)
                     if count % 100000 == 0:
                         logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
                         notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path}")
@@ -155,8 +172,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     configure_logging(args.log_level)
 
-    # Example: parse first 5 million moves from .zst file
-    for record in extract_data_from_pgn_zst("/content/drive/MyDrive/KnightVision/data/pgn/Lichess_Standard_Rated_Mar_2023.pgn.zst", move_limit=5000000):
+    last_count = get_last_parsed_count()
+    for record in extract_data_from_pgn_zst(
+            "/content/drive/MyDrive/KnightVision/data/pgn/Lichess_Standard_Rated_Mar_2023.pgn.zst", 
+            move_limit=5000000, 
+            skip_moves=last_count):
         print(record)
 
     parse_all_games(
