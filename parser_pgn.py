@@ -180,12 +180,28 @@ if __name__ == "__main__":
     args = parser.parse_args()
     configure_logging(args.log_level)
 
+    buffer = []
+    buffer_size = 500000  # You can adjust if you want larger or smaller chunks
+
     last_count = get_last_parsed_count()
     for record in extract_data_from_pgn_zst(
-            "/content/drive/MyDrive/KnightVision/data/pgn/Lichess_Standard_Rated_Mar_2023.pgn.zst", 
-            move_limit=5000000, 
+            "/content/drive/MyDrive/KnightVision/data/pgn/Lichess_Standard_Rated_Mar_2023.pgn.zst",
+            move_limit=50000000,
             skip_moves=last_count):
-        print(record)
+        buffer.append(record)
+
+        if len(buffer) >= buffer_size:
+            with open(os.path.join(BASE_DIR, "games.jsonl"), 'a', encoding='utf-8') as out_file:
+                for rec in buffer:
+                    out_file.write(json.dumps(rec) + "\n")
+            buffer = []
+
+    # Write any remaining records at the end
+    if buffer:
+        with open(os.path.join(BASE_DIR, "games.jsonl"), 'a', encoding='utf-8') as out_file:
+            for rec in buffer:
+                out_file.write(json.dumps(rec) + "\n")
+        buffer = []
 
     parse_all_games(
         pgn_dir=os.path.join(BASE_DIR, "pgn"),
