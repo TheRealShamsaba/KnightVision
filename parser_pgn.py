@@ -152,30 +152,24 @@ def extract_data_from_pgn_zst(zst_path, move_limit=None, skip_moves=0):
                             skipped += 1
                             continue
 
+                        fen = board.fen()
                         try:
-                            fen = board.fen()
-                            # Try to generate SAN and push move, skip game if illegal
-                            try:
-                                san = board.san(move)
-                                board.push(move)
-                            except Exception as e:
-                                logger.warning("⚠️ Skipping illegal move or corrupted game at move %s due to error: %s", move, e)
-                                break  # Skip this entire game safely
-
-                            yield {"fen": fen, "move": san, "outcome": outcome}
-                            count += 1
-                            set_last_parsed_count(skip_moves + count)
-
-                            if count % 100000 == 0:
-                                logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
-                                notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path}")
-
-                            if move_limit and count >= move_limit:
-                                return
-
+                            san = board.san(move)
+                            board.push(move)
                         except Exception as e:
-                            logger.warning("⚠️ Unexpected error inside move loop at move %s: %s", move, e)
-                            break  # Skip this game safely
+                            logger.warning("⚠️ Skipping illegal move at FEN %s with move %s due to error: %s", fen, move, e)
+                            break  # Skip this whole game safely
+
+                        yield {"fen": fen, "move": san, "outcome": outcome}
+                        count += 1
+                        set_last_parsed_count(skip_moves + count)
+
+                        if count % 100000 == 0:
+                            logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
+                            notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path}")
+
+                        if move_limit and count >= move_limit:
+                            return
 
                 except Exception as e_outer:
                     logger.warning("⚠️ Skipping corrupted game due to error: %s", e_outer)
