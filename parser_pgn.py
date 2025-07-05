@@ -3,6 +3,8 @@ import requests
 import logging
 from dotenv import load_dotenv
 from logging_utils import configure_logging
+import zstandard as zstd
+import io
 load_dotenv()
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -89,6 +91,41 @@ def extract_data_from_pgn(pgn_path):
     except Exception as e:
         logger.error("Failed to parse %s: %s", pgn_path, e)
 
+def extract_data_from_pgn_zst(zst_path, move_limit=None):
+    count = 0
+    dctx = zstd.ZstdDecompressor()
+    with open(zst_path, 'rb') as compressed:
+        with dctx.stream_reader(compressed) as reader:
+            text_stream = io.TextIOWrapper(reader, encoding='utf-8', errors='ignore')
+            while True:
+                game = chess.pgn.read_game(text_stream)
+                if game is None:
+                    break
+
+                board = game.board()
+                result = game.headers.get("Result", "*")
+                if result == "1-0":
+                    outcome = 1
+                elif result == "0-1":
+                    outcome = -1
+                elif result == "1/2-1/2":
+                    outcome = 0
+                else:
+                    outcome = None
+
+                for move in game.mainline_moves():
+                    fen = board.fen()
+                    san = board.san(move)
+                    board.push(move)
+                    yield {"fen": fen, "move": san, "outcome": outcome}
+                    count += 1
+                    if count % 100000 == 0:
+                        logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
+                        notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path}")
+
+                    if move_limit and count >= move_limit:
+                        return
+
 def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=os.path.join(BASE_DIR, "data", "games.jsonl")):
     if not os.path.exists(pgn_dir):
         notify_bot(f"❌ PGN directory not found: {pgn_dir}")
@@ -117,6 +154,10 @@ if __name__ == "__main__":
     parser.add_argument("--log-level", default=os.getenv("LOG_LEVEL", "INFO"), help="Logging level")
     args = parser.parse_args()
     configure_logging(args.log_level)
+
+    # Example: parse first 5 million moves from .zst file
+    for record in extract_data_from_pgn_zst("/content/drive/MyDrive/KnightVision/data/pgn/Lichess_Standard_Rated_Mar_2023.pgn.zst", move_limit=5000000):
+        print(record)
 
     parse_all_games(
         pgn_dir=os.path.join(BASE_DIR, "pgn"),
