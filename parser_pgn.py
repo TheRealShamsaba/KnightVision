@@ -15,10 +15,13 @@ def get_last_parsed_count():
     if os.path.exists(ZST_LOG):
         with open(ZST_LOG, 'r') as f:
             content = f.read().strip()
+            if not content:
+                logger.warning("⚠️ ZST_LOG is empty. Starting from 0.")
+                return 0
             try:
                 return int(content)
             except ValueError:
-                # If conversion fails (empty or invalid), start from zero
+                logger.warning("⚠️ ZST_LOG has invalid content. Starting from 0.")
                 return 0
     return 0
 
