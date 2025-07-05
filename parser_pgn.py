@@ -154,12 +154,14 @@ def extract_data_from_pgn_zst(zst_path, move_limit=None, skip_moves=0):
 
                         try:
                             fen = board.fen()
+                            # Try to generate SAN and push move, skip game if illegal
                             try:
                                 san = board.san(move)
                                 board.push(move)
-                            except AssertionError as e:
+                            except Exception as e:
                                 logger.warning("⚠️ Skipping illegal move or corrupted game at move %s due to error: %s", move, e)
-                                break  # Skip this game safely
+                                break  # Skip this entire game safely
+
                             yield {"fen": fen, "move": san, "outcome": outcome}
                             count += 1
                             set_last_parsed_count(skip_moves + count)
@@ -172,7 +174,7 @@ def extract_data_from_pgn_zst(zst_path, move_limit=None, skip_moves=0):
                                 return
 
                         except Exception as e:
-                            logger.warning("⚠️ Skipping illegal move or corrupted game at move %s due to error: %s", move, e)
+                            logger.warning("⚠️ Unexpected error inside move loop at move %s: %s", move, e)
                             break  # Skip this game safely
 
                 except Exception as e_outer:
