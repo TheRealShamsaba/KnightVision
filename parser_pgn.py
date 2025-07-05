@@ -98,15 +98,27 @@ def extract_data_from_pgn(pgn_path):
                 else:
                     outcome = None  # unknown or ongoing game
 
+                skipped = 0
                 for move in game.mainline_moves():
-                    fen = board.fen()
-                    san = board.san(move)
-                    board.push(move)
-                    yield {"fen": fen, "move": san, "outcome": outcome}
-                    count += 1
-                    if count % 100000 == 0:
-                        logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
-                        notify_bot(f"🕹️ Parsed {count:,} moves so far from {pgn_path}")
+                    if skipped < 0:
+                        skipped += 1
+                        continue
+
+                    try:
+                        fen = board.fen()
+                        san = board.san(move)
+                        board.push(move)
+                        yield {"fen": fen, "move": san, "outcome": outcome}
+                        count += 1
+                        set_last_parsed_count(count)
+
+                        if count % 100000 == 0:
+                            logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
+                            notify_bot(f"🕹️ Parsed {count:,} moves so far from {pgn_path}")
+
+                    except Exception as e:
+                        logger.warning("⚠️ Skipping illegal move or corrupted game at move %s due to error: %s", move, e)
+                        break  # Skip this whole game to stay safe
 
     except Exception as e:
         logger.error("Failed to parse %s: %s", pgn_path, e)
@@ -138,18 +150,25 @@ def extract_data_from_pgn_zst(zst_path, move_limit=None, skip_moves=0):
                     if skipped < skip_moves:
                         skipped += 1
                         continue
-                    fen = board.fen()
-                    san = board.san(move)
-                    board.push(move)
-                    yield {"fen": fen, "move": san, "outcome": outcome}
-                    count += 1
-                    set_last_parsed_count(skip_moves + count)
-                    if count % 100000 == 0:
-                        logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
-                        notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path}")
 
-                    if move_limit and count >= move_limit:
-                        return
+                    try:
+                        fen = board.fen()
+                        san = board.san(move)
+                        board.push(move)
+                        yield {"fen": fen, "move": san, "outcome": outcome}
+                        count += 1
+                        set_last_parsed_count(skip_moves + count)
+
+                        if count % 100000 == 0:
+                            logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
+                            notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path if 'zst' in locals() else pgn_path}")
+
+                        if move_limit and count >= move_limit:
+                            return
+
+                    except Exception as e:
+                        logger.warning("⚠️ Skipping illegal move or corrupted game at move %s due to error: %s", move, e)
+                        break  # Skip this whole game to stay safe
 
 def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=os.path.join(BASE_DIR, "data", "games.jsonl")):
     if not os.path.exists(pgn_dir):
