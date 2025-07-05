@@ -14,7 +14,11 @@ ZST_LOG = os.path.join("/content/drive/MyDrive/KnightVision/data", "parsed_zst_p
 def get_last_parsed_count():
     if os.path.exists(ZST_LOG):
         with open(ZST_LOG, 'r') as f:
-            return int(f.read().strip())
+            content = f.read().strip()
+            if content and content.isdigit():
+                return int(content)
+            else:
+                return 0
     return 0
 
 def set_last_parsed_count(count):
