@@ -131,44 +131,49 @@ def extract_data_from_pgn_zst(zst_path, move_limit=None, skip_moves=0):
         with dctx.stream_reader(compressed) as reader:
             text_stream = io.TextIOWrapper(reader, encoding='utf-8', errors='ignore')
             while True:
-                game = chess.pgn.read_game(text_stream)
-                if game is None:
-                    break
+                try:
+                    game = chess.pgn.read_game(text_stream)
+                    if game is None:
+                        break
 
-                board = game.board()
-                result = game.headers.get("Result", "*")
-                if result == "1-0":
-                    outcome = 1
-                elif result == "0-1":
-                    outcome = -1
-                elif result == "1/2-1/2":
-                    outcome = 0
-                else:
-                    outcome = None
+                    board = game.board()
+                    result = game.headers.get("Result", "*")
+                    if result == "1-0":
+                        outcome = 1
+                    elif result == "0-1":
+                        outcome = -1
+                    elif result == "1/2-1/2":
+                        outcome = 0
+                    else:
+                        outcome = None
 
-                for move in game.mainline_moves():
-                    if skipped < skip_moves:
-                        skipped += 1
-                        continue
+                    for move in game.mainline_moves():
+                        if skipped < skip_moves:
+                            skipped += 1
+                            continue
 
-                    try:
-                        fen = board.fen()
-                        san = board.san(move)
-                        board.push(move)
-                        yield {"fen": fen, "move": san, "outcome": outcome}
-                        count += 1
-                        set_last_parsed_count(skip_moves + count)
+                        try:
+                            fen = board.fen()
+                            san = board.san(move)
+                            board.push(move)
+                            yield {"fen": fen, "move": san, "outcome": outcome}
+                            count += 1
+                            set_last_parsed_count(skip_moves + count)
 
-                        if count % 100000 == 0:
-                            logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
-                            notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path if 'zst' in locals() else pgn_path}")
+                            if count % 100000 == 0:
+                                logger.info("🕹️ Parsed %s moves so far...", f"{count:,}")
+                                notify_bot(f"🕹️ Parsed {count:,} moves so far from {zst_path}")
 
-                        if move_limit and count >= move_limit:
-                            return
+                            if move_limit and count >= move_limit:
+                                return
 
-                    except Exception as e:
-                        logger.warning("⚠️ Skipping illegal move or corrupted game at move %s due to error: %s", move, e)
-                        break  # Skip this whole game to stay safe
+                        except Exception as e:
+                            logger.warning("⚠️ Skipping illegal move or corrupted game at move %s due to error: %s", move, e)
+                            break  # Skip this game safely
+
+                except Exception as e_outer:
+                    logger.warning("⚠️ Skipping corrupted game due to error: %s", e_outer)
+                    continue
 
 def parse_all_games(pgn_dir=os.path.join(BASE_DIR, "data", "pgn"), output_path=os.path.join(BASE_DIR, "data", "games.jsonl")):
     if not os.path.exists(pgn_dir):
