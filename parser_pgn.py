@@ -17,7 +17,8 @@ def get_last_parsed_count():
             content = f.read().strip()
             try:
                 return int(content)
-            except (ValueError, TypeError):
+            except ValueError:
+                # If conversion fails (empty or invalid), start from zero
                 return 0
     return 0
 
