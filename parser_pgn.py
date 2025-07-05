@@ -153,16 +153,21 @@ def extract_data_from_pgn_zst(zst_path, move_limit=None, skip_moves=0):
                             continue
 
                         fen = board.fen()
-                        if not board.is_legal(move):
-                            logger.warning("⚠️ Skipping illegal move at FEN %s with move %s", fen, move)
-                            break  # Skip the whole game safely
 
                         try:
+                            # Validate and get SAN
                             san = board.san(move)
+
+                            # Check legality again explicitly before pushing
+                            if not board.is_legal(move):
+                                logger.warning("⚠️ Move %s not legal at FEN %s", move, fen)
+                                break
+
                             board.push(move)
+
                         except Exception as e:
-                            logger.warning("⚠️ Error when pushing move at FEN %s with move %s: %s", fen, move, e)
-                            break  # Skip the whole game safely
+                            logger.warning("⚠️ Error when processing move at FEN %s with move %s: %s", fen, move, e)
+                            break  # Skip the entire game to stay safe
 
                         yield {"fen": fen, "move": san, "outcome": outcome}
                         count += 1
