@@ -150,7 +150,6 @@ def build_cfg(session_dir):
 
 # --- Reinforcement loop ---
 def reinforcement_loop(cfg):
-    # Load or initialize model
     model, optimizer, start_epoch = _load_model_helper(
         ChessNet,
         optim.Adam,
@@ -159,29 +158,31 @@ def reinforcement_loop(cfg):
         cfg.device
     )
 
-    # Prepare dataset and split
     dataset = ChessPGNDataset(cfg.games_path)
     n_total = len(dataset)
     n_train = int(0.9 * n_total)
     n_val = n_total - n_train
     train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
 
-    # Train
-    train_model(
-        model=model,
-        optimizer=optimizer,
-        start_epoch=start_epoch,
-        train_dataset=train_dataset,
-        val_dataset=val_dataset,
-        epochs=cfg.train.epochs,
-        batch_size=cfg.train.batch_size,
-        device=cfg.device
-    )
-    logger.info("✅ Training completed, checkpoint saved")
-    safe_send_telegram("✅ Training completed, checkpoint saved")
+    num_iterations = int(os.getenv("NUM_ITERATIONS", "5"))
 
-    # Generate self-play data
-    if cfg.selfplay.num_games > 0:
+    for iteration in range(1, num_iterations + 1):
+        logger.info(f"=== Iteration {iteration}/{num_iterations} ===")
+
+        # Train on current data
+        train_model(
+            model=model,
+            optimizer=optimizer,
+            start_epoch=start_epoch,
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            epochs=cfg.train.epochs,
+            batch_size=cfg.train.batch_size,
+            device=cfg.device
+        )
+        safe_send_telegram(f"✅ Iteration {iteration}: Training completed")
+
+        # Generate self-play games
         new_games = generate_self_play_data(
             model,
             cfg.selfplay.num_games,
@@ -189,20 +190,23 @@ def reinforcement_loop(cfg):
             cfg.selfplay.max_moves
         )
         logger.info("♟️ Self-play generated %d games", len(new_games))
-        safe_send_telegram(f"♟️ Self-play generated {len(new_games)} games")
-    else:
-        logger.info("🔧 Self-play skipped")
-        new_games = []
+        safe_send_telegram(f"♟️ Iteration {iteration}: Self-play generated {len(new_games)} games")
 
-    # Extend dataset
-    if new_games:
-        dataset.extend(new_games)
+        # Extend dataset
+        if new_games:
+            dataset.extend(new_games)
+            # Update splits
+            n_total = len(dataset)
+            n_train = int(0.9 * n_total)
+            n_val = n_total - n_train
+            train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
 
-    # Evaluate vs Stockfish
-    if cfg.selfplay.num_games > 0:
-        play_vs_stockfish(model, cfg.selfplay.num_games, cfg.stockfish.path)
-    else:
-        logger.info("🔧 Stockfish evaluation skipped")
+        # Optionally evaluate
+        if cfg.selfplay.num_games > 0:
+            play_vs_stockfish(model, cfg.selfplay.num_games, cfg.stockfish.path)
+
+    logger.info("🏁 All iterations completed!")
+    safe_send_telegram("🏁 All reinforcement iterations completed!")
 
 # --- Helper for model loading ---
 def _load_model_helper(model_class, optimizer_class, optimizer_kwargs, model_path, device):
