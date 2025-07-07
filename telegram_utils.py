@@ -1,17 +1,22 @@
 import os
-import time
-import requests
 import json
 import logging
+from datetime import datetime
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global settings controlled via environment variables
-TELEGRAM_ENABLED = os.getenv("TELEGRAM_ENABLED", "1").lower() not in ("0", "false")
-TELEGRAM_NOTIFY_INTERVAL = int(os.getenv("TELEGRAM_NOTIFY_INTERVAL", "0"))
-_last_sent = 0
-SUBSCRIBERS_FILE = os.path.join(os.path.dirname(__file__), "subscribers.json")
+# Environment vars
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+BASE_DIR = os.getenv("BASE_DIR", ".")
+STATUS_FILE = os.path.join(BASE_DIR, "last_status.json")
+SUBSCRIBERS_FILE = os.path.join(BASE_DIR, "subscribers.json")
+TENSORBOARD_URL = os.getenv("TENSORBOARD_URL", "")
 
+# Helper functions for subscribers
 def load_subscribers():
     try:
         with open(SUBSCRIBERS_FILE, "r") as f:
@@ -19,95 +24,101 @@ def load_subscribers():
     except FileNotFoundError:
         return []
 
-def save_subscribers(ids):
+def save_subscribers(subs):
     with open(SUBSCRIBERS_FILE, "w") as f:
-        json.dump(ids, f)
+        json.dump(subs, f)
 
 def subscribe_user(chat_id):
     subs = load_subscribers()
     if chat_id not in subs:
         subs.append(chat_id)
         save_subscribers(subs)
-        logger.info(f"Subscribed chat_id {chat_id}")
-        return True
-    return False
+        logger.info(f"Subscribed {chat_id}")
+    return subs
 
 def unsubscribe_user(chat_id):
     subs = load_subscribers()
     if chat_id in subs:
         subs.remove(chat_id)
         save_subscribers(subs)
-        logger.info(f"Unsubscribed chat_id {chat_id}")
-        return True
-    return False
+        logger.info(f"Unsubscribed {chat_id}")
+    return subs
 
-def list_subscribers():
-    return load_subscribers()
+# Command handlers
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    subscribe_user(chat_id)
+    await update.message.reply_text("✅ Subscribed to training updates. Use /stop to unsubscribe.")
 
-def send_telegram_message(message, parse_mode="HTML", force=False):
-    """Send a Telegram message if credentials are configured.
+async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    unsubscribe_user(chat_id)
+    await update.message.reply_text("🚫 Unsubscribed from training updates. Use /start to subscribe again.")
 
-    Set ``TELEGRAM_ENABLED=0`` to disable notifications entirely. ``TELEGRAM_NOTIFY_INTERVAL``
-    defines the minimum number of seconds between messages unless ``force`` is True.
-    ``TELEGRAM_BOT_TOKEN`` and ``TELEGRAM_CHAT_ID`` must also be set.
-    """
-
-
-    global _last_sent
-
-    if not TELEGRAM_ENABLED:
-        print("⚠️ Telegram notifications disabled.")
-        return
-
-    if TELEGRAM_NOTIFY_INTERVAL > 0 and not force:
-        now = time.time()
-        if now - _last_sent < TELEGRAM_NOTIFY_INTERVAL:
-            print("⏳ Skipping Telegram message due to interval limit")
-            return
-        _last_sent = now
-
-
-    if not message or not str(message).strip():
-        print("⚠️ Skipping Telegram message: empty content")
-        return
-
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    if not token or not chat_id:
-        print("⚠️ Telegram credentials not found in environment.")
-        return
-
-    # ensure subscriber list updated
-    if subscribe_user(chat_id):
-        logger.info(f"New subscriber added: {chat_id}")
-    subscribers = list_subscribers()
-
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "text": message,
-        "parse_mode": parse_mode,
-    }
-
-    for chat_id in subscribers:
-        payload["chat_id"] = chat_id
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if os.path.exists(STATUS_FILE):
         try:
-            response = requests.post(url, data=payload)
-            response.raise_for_status()
-            print(f"✅ Telegram message sent to {chat_id}: {message}")
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Failed to send Telegram message to {chat_id}: {e}")
+            with open(STATUS_FILE, "r") as f:
+                s = json.load(f)
+            text = (
+                f"🏁 *Last Training Status:*\n"
+                f"Epoch: `{s.get('epoch', '?')}`\n"
+                f"Train Loss: `{s.get('train_loss', '?')}`\n"
+                f"Accuracy: `{s.get('accuracy', '?')*100:.2f}%`\n"
+                f"Avg Reward: `{s.get('avg_reward', '?')}`\n"
+                f"Score: `{s.get('score', '?')}`\n"
+                f"Timestamp: `{s.get('timestamp', '?')}`"
+            )
+        except Exception as e:
+            text = f"❌ Error reading status file: {e}"
+    else:
+        text = "⚠️ No status file found."
+    await update.message.reply_markdown(text)
 
+async def graphs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if TENSORBOARD_URL:
+        await update.message.reply_text(f"📊 TensorBoard: {TENSORBOARD_URL}")
+    else:
+        await update.message.reply_text("⚠️ TensorBoard URL not configured.")
 
-def send_game_report(game_number, result, moves):
-    """Send a formatted report summarizing a self-play game."""
-    if not result or not moves:
-        print(f"⚠️ Skipping game report for Game {game_number} — missing result or moves")
+async def relay(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    admin_id = os.getenv("ADMIN_CHAT_ID")
+    if str(update.effective_chat.id) != str(admin_id):
         return
+    msg = " ".join(context.args)
+    if msg:
+        # broadcast
+        for cid in load_subscribers():
+            await context.bot.send_message(chat_id=cid, text=msg)
+        await update.message.reply_text("📨 Message broadcast.")
+    else:
+        await update.message.reply_text("Usage: /relay <message>")
 
-    message = (
-        f"♟️ *Self-Play Game {game_number}* Completed\n"
-        f"Result: *{result}*\n"
-        f"Moves: `{moves}`"
-    )
-    send_telegram_message(message)
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cmds = [
+        "/start - Subscribe to updates",
+        "/stop - Unsubscribe",
+        "/status - Show last training status",
+        "/graphs - Get TensorBoard link",
+        "/relay - Admin broadcast",
+        "/help - This help"
+    ]
+    await update.message.reply_text("\n".join(cmds))
+
+def main():
+    if not TOKEN:
+        logger.error("TELEGRAM_BOT_TOKEN not set")
+        return
+    app = ApplicationBuilder().token(TOKEN).build()
+    # Register handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("stop", stop))
+    app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("graphs", graphs))
+    app.add_handler(CommandHandler("relay", relay))
+    app.add_handler(CommandHandler("help", help_command))
+    logger.info("Bot starting...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
