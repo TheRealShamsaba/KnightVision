@@ -44,6 +44,12 @@ def unsubscribe_user(chat_id):
         logger.info(f"Unsubscribed {chat_id}")
     return subs
 
+
+# Helper to list subscribers
+def list_subscribers():
+    """Return the list of subscriber chat IDs."""
+    return load_subscribers()
+
 # Command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
