@@ -44,6 +44,11 @@ def unsubscribe_user(chat_id):
         logger.info(f"Unsubscribed {chat_id}")
     return subs
 
+# Add list_subscribers function
+def list_subscribers():
+    """Return the list of subscribed chat IDs."""
+    return load_subscribers()
+
 
 # Helper to list subscribers
 def list_subscribers():
