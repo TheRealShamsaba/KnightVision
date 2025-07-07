@@ -4,6 +4,24 @@ import warnings
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 warnings.filterwarnings("ignore")
 print("Training script loaded...")
+
+# === Configuration from environment ===
+from datetime import datetime
+
+BASE_DIR       = os.getenv("BASE_DIR", "/content/drive/MyDrive/KnightVision")
+DATA_PATH      = os.getenv("DATA_PATH", os.path.join(BASE_DIR, "data", "games.jsonl"))
+SESSIONS_DIR   = os.path.join(BASE_DIR, "sessions")
+CKPT_DIR       = os.getenv("CKPT_DIR", os.path.join(SESSIONS_DIR, "checkpoints"))
+LOG_DIR        = os.getenv("LOG_DIR", os.path.join(SESSIONS_DIR, "logs", "run_" + datetime.now().strftime("%Y%m%d_%H%M%S")))
+
+EPOCHS         = int(os.getenv("EPOCHS", "20"))
+BATCH_SIZE     = int(os.getenv("BATCH_SIZE", "4096"))
+ACCUM_STEPS    = int(os.getenv("ACCUM_STEPS", "2"))
+LR             = float(os.getenv("LR", "5e-4"))
+PATIENCE       = int(os.getenv("PATIENCE", "5"))
+SELFPLAY_GAMES = int(os.getenv("SELFPLAY_GAMES", "0"))
+SELFPLAY_MOVES = int(os.getenv("SELFPLAY_MOVES", "200"))
+NUM_WORKERS    = int(os.getenv("NUM_WORKERS", "8"))
 import threading
 import time
 import sys
@@ -41,14 +59,14 @@ logger.setLevel(logging.INFO)
 os.environ["NUM_SELFPLAY_GAMES"] = os.getenv("NUM_SELFPLAY_GAMES", "50")
 
 
-BASE_SESSIONS_DIR = "/content/drive/MyDrive/KnightVision/sessions"
+BASE_SESSIONS_DIR = SESSIONS_DIR
 
 def create_new_session_dir():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    run_dir = os.path.join(BASE_SESSIONS_DIR,f"run_{timestamp}")
+    run_dir = os.path.join(BASE_SESSIONS_DIR, f"run_{timestamp}")
     os.makedirs(run_dir, exist_ok=True)
-    os.makedirs(os.path.join(run_dir,"checkpoints"), exist_ok=True)
-    os.makedirs(os.path.join(run_dir,"logs"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir, "checkpoints"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir, "logs"), exist_ok=True)
     return run_dir
 
 def find_last_session_dir():
@@ -75,8 +93,8 @@ else:
     session_dir = create_new_session_dir()
     print(f"✅ Starting new session: {session_dir}")
 
-checkpoint_dir = os.path.join(session_dir, "checkpoints")
-logs_dir = os.path.join(session_dir, "logs")
+checkpoint_dir = CKPT_DIR
+logs_dir = LOG_DIR
 
 best_checkpoint_path = os.path.join(checkpoint_dir, "best_model.pth")
 last_checkpoint_path = os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth")
@@ -85,7 +103,7 @@ last_checkpoint_path = os.path.join(checkpoint_dir, "checkpoint_epoch_LAST.pth")
 writer = SummaryWriter(log_dir=os.path.join(logs_dir, "tensorboard"))
 
 # === Dataset ===
-games_path = "/content/drive/MyDrive/KnightVision/data/games.jsonl"
+games_path = DATA_PATH
 
 # --- Evaluation function ---
 def evaluate(model, data_loader, device):
@@ -243,14 +261,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--epochs",
     type=int,
-    default=int(os.getenv("EPOCHS", "5")),
-    help="Number of total epochs to train (overridden by EPOCHS env var)"
+    default=EPOCHS,
+    help="Total epochs to train (overridden by EPOCHS env var)"
 )
 args, unknown = parser.parse_known_args()
 
 num_epochs = args.epochs
 # === New train_with_validation function ===
-def train_with_validation(model, optimizer, start_epoch, train_dataset, val_dataset, epochs=num_epochs, batch_size=2048, device='cpu', pin_memory=True, num_workers=8):
+def train_with_validation(model, optimizer, start_epoch, train_dataset, val_dataset, epochs=num_epochs, batch_size=BATCH_SIZE, device='cpu', pin_memory=True, num_workers=NUM_WORKERS):
     scaler = GradScaler()
     # Build DataLoader kwargs
     loader_kwargs = {"batch_size": batch_size}
@@ -312,7 +330,7 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     heartbeat_thread = threading.Thread(target=heartbeat_checker, daemon=True)
     heartbeat_thread.start()
     # Get accumulate_steps from environment
-    accumulate_steps = int(os.getenv("ACCUM_STEPS", "1"))
+    accumulate_steps = ACCUM_STEPS
     for epoch in tqdm(range(start_epoch, epochs), desc="Training Epochs"):
         last_epoch_time = time.time()
         send_telegram_message(f"🚀 Starting epoch {epoch+1}")
@@ -475,7 +493,7 @@ except NameError:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ## Do not set multiprocessing start method globally here; move to main block.
 # Validation & Early-Stopping config
-PATIENCE = int(os.getenv("EARLY_STOPPING_PATIENCE", "5"))
+# Use PATIENCE from env/config above
 
 logger = logging.getLogger(__name__)
 
@@ -550,7 +568,7 @@ train_dataset, validation_dataset = random_split(training_dataset, [train_size, 
 print(f"✅ Dataset split: {train_size} train, {val_size} val samples")
 print(f"Training dataset size: {len(train_dataset)}")
 print(f"Validation dataset size: {len(validation_dataset)}")
-print(f"Expected batches per epoch (train): {len(train_dataset) // 4096}")
+print(f"Expected batches per epoch (train): {len(train_dataset) // {BATCH_SIZE}}")
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -609,7 +627,7 @@ send_telegram_message("🚀 Training started...")
 # Function to capture stdout and stderr during training and send via Telegram in chunks
 def capture_and_train():
     # assuming validation_dataset is prepared earlier (e.g., split from training_dataset)
-    print(f"🔧 Training: epochs={args.epochs}, batch_size=4096, pin_memory=True, num_workers=12")
+    print(f"🔧 Training: epochs={args.epochs}, batch_size={BATCH_SIZE}, pin_memory=True, num_workers={NUM_WORKERS}")
     try:
         result = train_with_validation(
             model=model,
@@ -618,10 +636,10 @@ def capture_and_train():
             train_dataset=train_dataset,
             val_dataset=validation_dataset,
             epochs=args.epochs,
-            batch_size=4096,
+            batch_size=BATCH_SIZE,
             device=device,
             pin_memory=True,
-            num_workers=12
+            num_workers=NUM_WORKERS
         )
         print("✅ Training complete: model saved to best_model.pth")
     except Exception as e:
