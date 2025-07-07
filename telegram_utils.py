@@ -1,11 +1,24 @@
 import os
 import time
 import requests
+import json
 
 # Global settings controlled via environment variables
 TELEGRAM_ENABLED = os.getenv("TELEGRAM_ENABLED", "1").lower() not in ("0", "false")
 TELEGRAM_NOTIFY_INTERVAL = int(os.getenv("TELEGRAM_NOTIFY_INTERVAL", "0"))
 _last_sent = 0
+SUBSCRIBERS_FILE = os.path.join(os.path.dirname(__file__), "subscribers.json")
+
+def load_subscribers():
+    try:
+        with open(SUBSCRIBERS_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+def save_subscribers(ids):
+    with open(SUBSCRIBERS_FILE, "w") as f:
+        json.dump(ids, f)
 
 def send_telegram_message(message, parse_mode="HTML", force=False):
     """Send a Telegram message if credentials are configured.
@@ -41,19 +54,25 @@ def send_telegram_message(message, parse_mode="HTML", force=False):
         print("⚠️ Telegram credentials not found in environment.")
         return
 
+    subscribers = load_subscribers()
+    if chat_id not in subscribers:
+        subscribers.append(chat_id)
+        save_subscribers(subscribers)
+
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
-        "chat_id": chat_id,
         "text": message,
         "parse_mode": parse_mode,
     }
 
-    try:
-        response = requests.post(url, data=payload)
-        response.raise_for_status()
-        print(f"✅ Telegram message sent: {message}")
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Failed to send Telegram message: {e}")
+    for chat_id in subscribers:
+        payload["chat_id"] = chat_id
+        try:
+            response = requests.post(url, data=payload)
+            response.raise_for_status()
+            print(f"✅ Telegram message sent to {chat_id}: {message}")
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Failed to send Telegram message to {chat_id}: {e}")
 
 
 def send_game_report(game_number, result, moves):

@@ -13,6 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 import tensorflow as tf
 from datetime import datetime
+import json
 from self_play import generate_self_play_data
 from telegram_utils import send_telegram_message
 from model_utils import load_or_initialize_model
@@ -26,12 +27,13 @@ import chess.pgn
 from torch.utils.data import Dataset, DataLoader, random_split
 import torch.nn
 import random
-import json
 import numpy as np
 from torch.cuda.amp import GradScaler
 import google.colab
 from torch.utils.tensorboard import SummaryWriter
 import torch.multiprocessing
+# tqdm for progress bars
+from tqdm.auto import tqdm
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -115,10 +117,10 @@ def _train_one_epoch(model, dataloader, optimizer, epoch, device, writer, scaler
     last_moves = None
     optimizer.zero_grad()
     num_batches = len(dataloader)
-    for i in range(num_batches):
+    for i in tqdm(range(num_batches), desc=f"Epoch {epoch+1} Batches", leave=False):
         try:
             boards_np, moves, outcomes = next(dataloader_iter)
-            print(f"🔁 Processing batch {i+1}/{num_batches}")
+            # print(f"🔁 Processing batch {i+1}/{num_batches}")
             last_moves = moves
         except Exception as e:
             print(f"⚠️ Data loading error: {e}")
@@ -238,7 +240,12 @@ def _run_self_play(model, num_selfplay_games, device, sleep_time, max_moves, dat
     return dataloader
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--epochs", type=int, default=5, help="Number of total epochs to train")
+parser.add_argument(
+    "--epochs",
+    type=int,
+    default=int(os.getenv("EPOCHS", "5")),
+    help="Number of total epochs to train (overridden by EPOCHS env var)"
+)
 args, unknown = parser.parse_known_args()
 
 num_epochs = args.epochs
@@ -277,6 +284,9 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         patience=PATIENCE,
         verbose=True
     )
+    # StepLR scheduler
+    from torch.optim.lr_scheduler import StepLR
+    step_scheduler = StepLR(optimizer, step_size=LR_STEP_SIZE, gamma=LR_GAMMA)
     # model.to(device) -- moved to main block
     all_losses = []
     all_rewards = []
@@ -303,7 +313,7 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
     heartbeat_thread.start()
     # Get accumulate_steps from environment
     accumulate_steps = int(os.getenv("ACCUM_STEPS", "1"))
-    for epoch in range(start_epoch, epochs):
+    for epoch in tqdm(range(start_epoch, epochs), desc="Training Epochs"):
         last_epoch_time = time.time()
         send_telegram_message(f"🚀 Starting epoch {epoch+1}")
         if (epoch + 1) % 10 == 0:
@@ -391,6 +401,10 @@ def train_with_validation(model, optimizer, start_epoch, train_dataset, val_data
         send_telegram_message(summary_msg)
         writer.flush()
         cos_scheduler.step(epoch + 1)
+        # Step the StepLR scheduler and log the LR
+        step_scheduler.step()
+        current_lr = optimizer.param_groups[0]['lr']
+        writer.add_scalar("Hyperparams/StepLR", current_lr, epoch)
         writer.add_scalar("Hyperparams/LearningRate", optimizer.param_groups[0]["lr"], epoch)
         all_losses.append(total_loss)
         all_rewards.append(avg_reward)
@@ -633,6 +647,20 @@ def capture_and_train():
         summary = "✅ Training completed. Check logs for details."
     send_telegram_message(summary)
     print("✅ Telegram message sent.")
+    # Write last training status for bot
+    try:
+        status = {
+            "epoch": len(result["losses"]),
+            "train_loss": result["losses"][-1],
+            "accuracy": result["accuracies"][-1],
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        status_path = os.path.join(os.getenv("BASE_DIR", BASE_SESSIONS_DIR), "last_status.json")
+        with open(status_path, "w") as sf:
+            json.dump(status, sf)
+        send_telegram_message("✅ Training status file updated.")
+    except Exception as e:
+        print(f"⚠️ Failed to write status file: {e}")
 
 # Main entry point for script execution
 if __name__ == '__main__':
