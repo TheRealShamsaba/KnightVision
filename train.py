@@ -493,8 +493,6 @@ class ChessPGNDataset(torch.utils.data.Dataset):
                     break
                 self.line_offsets.append(offset)
                 offset += len(line)
-        print(f"✅ ChessPGNDataset loaded: {len(self.line_offsets)} samples found in {self.file_path}")
-        print(f"Max samples configured: {self.max_samples}")
 
     def __len__(self):
         return len(self.line_offsets) + len(self.additional_data)
@@ -517,7 +515,6 @@ class ChessPGNDataset(torch.utils.data.Dataset):
             outcome = -1.0
         else:
             outcome = 0.0
-        print(f"Loaded record idx={idx}, result={result}, outcome={outcome}")
         return board_tensor, move_index, outcome
 
     def fen_to_tensor(self, fen):
