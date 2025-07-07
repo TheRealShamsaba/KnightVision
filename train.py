@@ -160,11 +160,11 @@ def _train_one_epoch(model, dataloader, optimizer, epoch, device, writer, scaler
         # Gradient accumulation: scale loss by accumulate_steps
         loss = loss / accumulate_steps
         scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
         # Only step optimizer every accumulate_steps batches, or at the end
         if ((i + 1) % accumulate_steps == 0) or (i == num_batches - 1):
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad()
