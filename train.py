@@ -568,7 +568,7 @@ train_dataset, validation_dataset = random_split(training_dataset, [train_size, 
 print(f"✅ Dataset split: {train_size} train, {val_size} val samples")
 print(f"Training dataset size: {len(train_dataset)}")
 print(f"Validation dataset size: {len(validation_dataset)}")
-print(f"Expected batches per epoch (train): {len(train_dataset) // {BATCH_SIZE}}")
+print(f"Expected batches per epoch (train): {len(train_dataset) // BATCH_SIZE}")
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
