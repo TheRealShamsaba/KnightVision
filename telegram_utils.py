@@ -2,6 +2,9 @@ import os
 import time
 import requests
 import json
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Global settings controlled via environment variables
 TELEGRAM_ENABLED = os.getenv("TELEGRAM_ENABLED", "1").lower() not in ("0", "false")
@@ -19,6 +22,27 @@ def load_subscribers():
 def save_subscribers(ids):
     with open(SUBSCRIBERS_FILE, "w") as f:
         json.dump(ids, f)
+
+def subscribe_user(chat_id):
+    subs = load_subscribers()
+    if chat_id not in subs:
+        subs.append(chat_id)
+        save_subscribers(subs)
+        logger.info(f"Subscribed chat_id {chat_id}")
+        return True
+    return False
+
+def unsubscribe_user(chat_id):
+    subs = load_subscribers()
+    if chat_id in subs:
+        subs.remove(chat_id)
+        save_subscribers(subs)
+        logger.info(f"Unsubscribed chat_id {chat_id}")
+        return True
+    return False
+
+def list_subscribers():
+    return load_subscribers()
 
 def send_telegram_message(message, parse_mode="HTML", force=False):
     """Send a Telegram message if credentials are configured.
@@ -54,10 +78,10 @@ def send_telegram_message(message, parse_mode="HTML", force=False):
         print("⚠️ Telegram credentials not found in environment.")
         return
 
-    subscribers = load_subscribers()
-    if chat_id not in subscribers:
-        subscribers.append(chat_id)
-        save_subscribers(subscribers)
+    # ensure subscriber list updated
+    if subscribe_user(chat_id):
+        logger.info(f"New subscriber added: {chat_id}")
+    subscribers = list_subscribers()
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
