@@ -172,9 +172,10 @@ def reinforcement_loop(cfg):
         # Train on current data
         train_model(
             model,
+            optimizer,
+            start_epoch,
             train_dataset,
             val_dataset,
-            optimizer,
             epochs=cfg.train.epochs,
             batch_size=cfg.train.batch_size,
             device=cfg.device
