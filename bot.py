@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext
 
 from telegram_utils import (
     subscribe_user,
@@ -83,18 +83,16 @@ def relay(update: Update, context: CallbackContext):
         update.message.reply_text("📨 Message broadcast to all subscribers.")
 
 def main():
-    updater = Updater(token=TOKEN, use_context=True)
-    dp = updater.dispatcher
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("stop", stop))
-    dp.add_handler(CommandHandler("status", status))
-    dp.add_handler(CommandHandler("graphs", graphs))
-    dp.add_handler(CommandHandler("relay", relay, pass_args=True))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("stop", stop))
+    app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("graphs", graphs))
+    app.add_handler(CommandHandler("relay", relay))
 
     logger.info("Bot starting…")
-    updater.start_polling()
-    updater.idle()
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
