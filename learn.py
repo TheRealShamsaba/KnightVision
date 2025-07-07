@@ -32,7 +32,7 @@ import random
 import requests
 
 from telegram_utils import send_telegram_message
-from train import train_with_validation as train_model, ChessPGNDataset
+from train import train as train_model, ChessPGNDataset
 from torch.utils.data import DataLoader, random_split
 from model import ChessNet
 import torch.optim as optim
@@ -171,11 +171,10 @@ def reinforcement_loop(cfg):
 
         # Train on current data
         train_model(
-            model=model,
-            optimizer=optimizer,
-            start_epoch=start_epoch,
-            train_dataset=train_dataset,
-            val_dataset=val_dataset,
+            model,
+            train_dataset,
+            val_dataset,
+            optimizer,
             epochs=cfg.train.epochs,
             batch_size=cfg.train.batch_size,
             device=cfg.device
