@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime
+import requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
@@ -50,10 +51,27 @@ def list_subscribers():
     return load_subscribers()
 
 
-# Helper to list subscribers
-def list_subscribers():
-    """Return the list of subscriber chat IDs."""
-    return load_subscribers()
+# Helper to send a message to all subscribers
+def send_telegram_message(message: str, parse_mode="HTML"):
+    """
+    Broadcast a message to all subscribers via Telegram Bot API.
+    """
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not token:
+        logger.warning("TELEGRAM_BOT_TOKEN not set; cannot send message.")
+        return
+    subs = load_subscribers()
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    for chat_id in subs:
+        payload = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": parse_mode,
+        }
+        try:
+            requests.post(url, data=payload, timeout=5)
+        except Exception as e:
+            logger.error(f"Error sending message to {chat_id}: {e}")
 
 # Command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
