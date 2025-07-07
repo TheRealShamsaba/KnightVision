@@ -32,7 +32,7 @@ import random
 import requests
 
 from telegram_utils import send_telegram_message
-from train import train as train_model, ChessPGNDataset
+from train import train_with_validation as train_model, ChessPGNDataset
 from torch.utils.data import DataLoader, random_split
 from model import ChessNet
 import torch.optim as optim
