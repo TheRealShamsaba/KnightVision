@@ -1,47 +1,21 @@
-# 🤝 Contributing to KnightVision
+# Contributing to KnightVision
 
-First of all, thanks for considering contributing to KnightVision! Your help is greatly appreciated and will make this project even stronger.
+For a bug report, include the relevant board position, the move sequence, the expected result, and the actual result. For experiment issues, also include the Python/package versions and the script being run. Keep credentials and private data out of reports.
 
----
+## Local workflow
 
-## 🛠️ How to contribute
+Fork the repository on GitHub, clone your fork using its clone URL, then create a branch for one focused change.
 
-### 1️⃣ Fork the repository
-
-Click the **Fork** button at the top right of the repo page to create your own copy.
-
----
-
-### 2️⃣ Clone your fork
+From the repository root, run the rules tests with Python 3.11:
 
 ```bash
-git clone https://github.com/yourusername/KnightVision.git
-cd KnightVision
+PYTHONPATH=core python3 -B -m unittest discover -s tests -v
+```
 
+This command needs no third-party packages. If you change engine behavior, add a focused regression test in `tests/` and rerun the suite. The [README](README.md#working-with-the-experiments) describes the additional requirements and current limits of the ML scripts.
 
----
+In a pull request, explain the behavior changed, the checks run, and anything not validated. Avoid committing credentials, model checkpoints, training datasets, or generated logs.
 
-## ✅ `LICENSE` (MIT License)
+## Credit and license
 
-```markdown
-MIT License
-
-Copyright (c) 2025 TheRealShamsaba and BakerDmo
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+KnightVision is a project by [Arian Shamsabadi](https://github.com/TheRealShamsaba) and [BakerDmo](https://github.com/BakerDmo). Preserve the existing authorship credit and [MIT license](LICENSE).
