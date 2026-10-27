@@ -6,6 +6,7 @@ import { sheets } from './sheets'
 import { quilt } from './quilt'
 import { mirror } from './mirror'
 import { convFig, eloFig, lossFig, reachFig } from './figs'
+import { mountNav } from '../../nav'
 
 const games = data.elo?.games ?? []
 const facts: Record<string, string> = {
@@ -46,3 +47,6 @@ function placeNotes(): void {
 addEventListener('resize', placeNotes)
 document.fonts?.ready.then(placeNotes)
 placeNotes()
+
+// The menu: the four pages, always in view.
+mountNav({ current: '/prototypes/notebook.html', className: 'nav-notebook' })

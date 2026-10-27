@@ -10,6 +10,7 @@ import { Tracing } from './tracing'
 import { tracingSides } from './pencil'
 import { feltTexture, grainCanvas, toTexture } from './textures'
 import { Clack } from './sound'
+import { mountNav } from '../../nav'
 
 const opera = data.opera.plies[10]
 const mirror = data.mirror[2]
@@ -63,6 +64,8 @@ app.innerHTML = `
   </section>
 </main>
 <footer><a href="./index.html">← all three directions</a><a href="/">Full site</a></footer>`
+
+mountNav({ current: '/prototypes/workshop.html', className: 'nav-desk' })
 
 // ---------- Table, light, wood ----------
 

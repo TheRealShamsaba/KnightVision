@@ -291,3 +291,27 @@ html { scroll-snap-type: none; }
 .blueprint .small { color: inherit; }
 /* Tilted paper pokes past the edge of the desk; clip it rather than scroll sideways. */
 main { overflow-x: clip; }
+
+/* The menu, as a typed tag like the sound button. */
+.kv-nav.nav-mail { --nav-bg: #F2EDE3; --nav-fg: #111; --nav-muted: #6b6359; --nav-accent: var(--orange); --nav-font: var(--type); --nav-display: var(--display); --nav-rule: rgba(17, 17, 17, .45); }
+.kv-nav.nav-mail { font-size: 14px; }
+
+/* ---------- Phones: room for the menu, and each object rearranged for a narrow desk ---------- */
+.bp-swipe { display: none; }
+@media (max-width: 860px) {
+  .bp-swipe { display: block; margin: 0 0 4px; font-size: 12.5px; opacity: .8; }
+}
+@media (max-width: 680px) {
+  .slot { padding-top: 64px; padding-bottom: 28px; min-height: auto; }
+  .slot:first-child { padding-top: 70px; }
+  /* The postmark cancels the stamp's corner instead of landing on the address lines. */
+  .card .postmark { top: -18px; right: 58px; width: 104px; opacity: .7; }
+  .tg-head { flex-wrap: wrap; gap: 4px 12px; }
+  .tg-brand { font-size: 34px; letter-spacing: .14em; }
+  .tg-form { grid-template-columns: 1fr; gap: 0; }
+  .tg-label { margin-top: 6px; }
+  .tapes { min-height: 0; }
+  .story { text-align: left; }
+  .headline { font-size: 30px; }
+  .index-card { width: 100%; }
+}

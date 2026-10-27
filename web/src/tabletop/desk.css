@@ -86,3 +86,24 @@ button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .card, .sound { pointer-events: auto; }
 main { pointer-events: none; }
 [hidden] { display: none !important; }
+
+/* The menu, on the same paper as the cards. */
+.kv-nav.nav-desk { --nav-font: Jost, sans-serif; --nav-display: Jost, sans-serif; --nav-bg: var(--paper); --nav-fg: var(--ink); --nav-accent: var(--red); }
+.kv-nav { pointer-events: auto; }
+
+/* "Read more" only exists on phones; wide screens show every card in full. */
+.more-toggle { display: none; }
+@media (max-width: 819px) {
+  .beat { padding-top: 66vh; }
+  .card { padding: 16px 16px 14px; font-size: 15px; line-height: 1.5; }
+  .card h2 { font-size: 1.35rem; }
+  .card h1 { font-size: 2.3rem; }
+  .card .lead { font-size: 1.02rem; }
+  .card .more { display: none; }
+  .card.open .more { display: block; margin-top: 4px; }
+  .more-toggle {
+    display: inline-block; margin-top: 2px; padding: 4px 0; background: none; border: 0; cursor: pointer;
+    font: 500 0.88rem Jost, sans-serif; color: var(--red); text-decoration: underline; text-underline-offset: 3px;
+  }
+  .candidates { margin: 8px 0 4px; }
+}

@@ -7,6 +7,7 @@ import { blueprint, envelope, graded, riffle, telegram, albumPage, whenSeen } fr
 import { mountQuilt } from './quilt'
 import { current, mountScrubs, onPosition, setPosition } from './scrub'
 import { setSound, thunk } from './sound'
+import { mountNav } from '../nav'
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
 const opera = data.opera.plies[10]
@@ -151,3 +152,6 @@ void Promise.all(fonts).catch(() => []).then(() => {
   const stage = $('#stage')
   whenSeen(stage, () => void import('./stamp3d').then((m) => m.mountStamp(stage, mirror.fen, reduce, () => thunk(0.55))), 0)
 })
+
+// The menu: the four pages, always in view.
+mountNav({ current: '/', className: 'nav-mail' })

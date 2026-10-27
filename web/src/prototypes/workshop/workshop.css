@@ -74,3 +74,6 @@ footer a { color: var(--ink); text-decoration-color: var(--beech); text-underlin
   .card { position: relative; top: auto; width: auto; margin: 0; padding: 22px 20px; }
   .sound { top: 10px; right: 10px; }
 }
+
+/* The menu, on the same paper as the cards. */
+.kv-nav.nav-desk { --nav-font: Jost, sans-serif; --nav-display: Jost, sans-serif; --nav-bg: var(--paper); --nav-fg: var(--ink); --nav-accent: var(--red); }

@@ -19,6 +19,7 @@ import { Tally } from './tally'
 import { grainCanvas, toTexture } from './textures'
 import { tiltShift } from './tiltshift'
 import { Tracing } from './tracing'
+import { mountNav } from '../nav'
 
 const opera = data.opera.plies[10]
 const mirror = data.mirror[2]
@@ -44,8 +45,15 @@ const STOP = {
 
 const wins = elo?.games.filter((g) => g.score === 1).length ?? 0
 const draws = elo?.games.filter((g) => g.score === 0.5).length ?? 0
-const card = (n: number, title: string, body: string) =>
-  `<section class="beat"><div class="card"><p class="stop">stop ${n} of 8</p><h2>${title}</h2>${body}</div></section>`
+// On phones a card shows only its first paragraph, so the desk stays in view; the rest unfolds on request.
+// The last card (the game) keeps everything, since its controls are the point.
+const card = (n: number, title: string, body: string) => {
+  const cut = body.indexOf('</p>') + 4
+  const [lead, more] = n === 8 ? [body, ''] : [body.slice(0, cut), body.slice(cut)]
+  return `<section class="beat"><div class="card"><p class="stop">stop ${n} of 8</p><h2>${title}</h2>${lead}` +
+    (more ? `<div class="more">${more}</div><button class="more-toggle" type="button" aria-expanded="false">Read more</button>` : '') +
+    `</div></section>`
+}
 const idea = (name: string, text: string) => `<p class="idea"><b>${name}</b>${text}</p>`
 
 const app = document.querySelector<HTMLElement>('#app')!
@@ -118,6 +126,9 @@ app.innerHTML = `
     <p class="note">Next for KnightVision: a search on top of this instinct, the way AlphaZero does, so it can check before it moves.</p>`)}
 </main>`
 
+// The menu: the four pages, always in view.
+mountNav({ current: '/flight.html', className: 'nav-desk' })
+
 // ---------- Renderer, room, lamp ----------
 
 const canvas = app.querySelector<HTMLCanvasElement>('.table')!
@@ -130,8 +141,9 @@ renderer.toneMappingExposure = 1.0
 
 const scene = new THREE.Scene()
 scene.background = new THREE.Color('#17110D')
-scene.fog = new THREE.Fog('#17110D', 70, 170)
-const camera = new THREE.PerspectiveCamera(30, 1, 0.5, 400)
+// The fog starts past the far stops; the opening wide shot sits further back on tall phone screens.
+scene.fog = new THREE.Fog('#17110D', 90, 260)
+const camera = new THREE.PerspectiveCamera(30, 1, 0.5, 600)
 scene.add(new THREE.HemisphereLight('#FFF1DC', '#3A2516', 1.15))
 
 const desk = new Desk()
@@ -231,6 +243,12 @@ function build() {
     play.click(ray)
   })
 
+  app.querySelectorAll<HTMLButtonElement>('.more-toggle').forEach((b) => b.addEventListener('click', () => {
+    const open = b.closest('.card')!.classList.toggle('open')
+    b.setAttribute('aria-expanded', String(open))
+    b.textContent = open ? 'Show less' : 'Read more'
+  }))
+
   let flipTouched = false
   const flipButton = app.querySelector<HTMLButtonElement>('.flip')!
   flipButton.addEventListener('click', () => { flipTouched = true; tracing.set(!tracing.flipped) })
@@ -240,7 +258,8 @@ function build() {
   type Pose = { at: THREE.Vector3; w: number; h: number; elev: number; turn: number }
   let wide = true, rowOfSix = true
   const poses = (): Pose[] => [
-    { at: new THREE.Vector3(1, 0, 3), w: 31, h: 25, elev: 54, turn: 28 },
+    // The whole desk; on a narrow screen frame its middle, or the camera backs off into the dark.
+    { at: new THREE.Vector3(1, 0, 3), w: wide ? 31 : 17, h: 25, elev: 54, turn: 28 },
     { at: new THREE.Vector3(0, 0.3, 0.2), w: 4.9, h: 4.1, elev: 48, turn: STOP.board.turn },
     { at: STOP.cards.at.clone().setY(2.2), w: 4.4, h: 4.4, elev: 30, turn: STOP.cards.turn },
     { at: STOP.trays.at.clone(), w: rowOfSix ? 10.6 : 5.4, h: rowOfSix ? 4.6 : 8.4, elev: 62, turn: STOP.trays.turn },

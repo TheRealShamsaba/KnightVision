@@ -182,3 +182,10 @@ section { position: relative; }
   .reach-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .segmented { flex-wrap: wrap; }
 }
+
+/* The menu, as an ink-ruled box like the notebook's buttons. */
+.kv-nav.nav-notebook { --nav-bg: var(--paper); --nav-fg: var(--ink); --nav-muted: var(--graphite); --nav-accent: #D9481E; --nav-font: 'Schibsted Grotesk', system-ui, sans-serif; --nav-rule: var(--ink); }
+.kv-nav.nav-notebook { box-shadow: none; }
+@media (max-width: 720px) {
+  .masthead { padding-top: 4.5rem; } /* clear of the Contents button */
+}

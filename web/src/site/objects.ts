@@ -209,7 +209,9 @@ export function albumPage(c: HTMLCanvasElement, width: number): void {
   let y = 0
   per.forEach((list, k) => {
     const won = list.filter((x) => x.score === 1).length, drawn = list.filter((x) => x.score === 0.5).length
-    labels.push({ y: y + 20, text: `against stockfish ${levels[k]}: ${won} won, ${drawn} drawn, ${list.length - won - drawn} lost` })
+    // Narrow pages get the short form, so the label never runs off the album page.
+    const lost = list.length - won - drawn
+    labels.push({ y: y + 20, text: width < 460 ? `vs ${levels[k]}: ${won} won · ${drawn} drawn · ${lost} lost` : `against stockfish ${levels[k]}: ${won} won, ${drawn} drawn, ${lost} lost` })
     y += band
     list.forEach((x, i) => spots.push({ x: (i % cols) * sw, y: y + Math.floor(i / cols) * sh, score: x.score }))
     y += rows[k] * sh + 18

@@ -5,7 +5,8 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { feltTexture, grainCanvas, toTexture } from './textures'
 
 export const DESK = { w: 66, d: 62, y: 0 }
-export const LAMP_BASE = new THREE.Vector3(-27, 0, -25)
+// Back-right corner: no camera stop looks through the lamp from here.
+export const LAMP_BASE = new THREE.Vector3(27, 0, -25)
 
 export class Desk {
   readonly group = new THREE.Group()

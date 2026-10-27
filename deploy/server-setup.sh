@@ -9,8 +9,8 @@ set -euo pipefail
 
 DOMAIN=knightvision.realcompanys.com
 ROOT=/var/www/knightvision
-RELEASE=https://github.com/TheRealShamsaba/KnightVision/releases/download/web-v2/knightvision-web-v2.tar.gz
-SHA256=c93486649424ea3081b6f63f8a2b7104c3d1412b4863310c27e14e1fb893812b
+RELEASE=https://github.com/TheRealShamsaba/KnightVision/releases/download/web-v2.1/knightvision-web-v2.1.tar.gz
+SHA256=1fe8b0c4dafb6d2da1b13332dee85e0cbddec799e7eb35b1835805382ed673cf
 
 say() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 fail() { printf '\n\033[31mStopped: %s\033[0m\n' "$*" >&2; exit 1; }
@@ -56,13 +56,9 @@ else
   CONF=/etc/nginx/conf.d/$DOMAIN.conf
   LINK=
 fi
-cat > "$CONF" <<'NGINX'
-# KnightVision at knightvision.realcompanys.com: a static site, no backend.
-server {
-    listen 80;
-    listen [::]:80;
-    server_name knightvision.realcompanys.com;
-
+[ -f "$CONF" ] && cp "$CONF" "$CONF.bak"
+# What every server block for the site serves; shared by the http and https versions.
+LOCATIONS='
     root /var/www/knightvision;
     index index.html;
 
@@ -76,35 +72,78 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # ONNX Runtime's WebAssembly must be served as application/wasm (older mime.types lack it).
+    # ONNX Runtime ships WebAssembly and an ES module loader (.mjs). Older mime.types know
+    # neither, and browsers refuse to run a module served as a plain download.
     location ~ \.wasm$ {
         default_type application/wasm;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
+    location ~ \.mjs$ {
+        types { }
+        default_type text/javascript;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
 
-    # The 25 MB network: cache it a week so returning visitors don't download it again.
+    # The 25 MB network: cache it a week so returning visitors do not download it again.
     location = /knightvision.onnx {
         default_type application/octet-stream;
         add_header Cache-Control "public, max-age=604800";
     }
 
     gzip on;
-    gzip_types text/css application/javascript application/json image/svg+xml application/wasm;
+    gzip_types text/css application/javascript text/javascript application/json image/svg+xml application/wasm;
+'
+CERT=/etc/letsencrypt/live/$DOMAIN
+SSL_EXTRA=
+[ -f /etc/letsencrypt/options-ssl-nginx.conf ] && SSL_EXTRA="$SSL_EXTRA    include /etc/letsencrypt/options-ssl-nginx.conf;
+"
+[ -f /etc/letsencrypt/ssl-dhparams.pem ] && SSL_EXTRA="$SSL_EXTRA    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+"
+if [ -f "$CERT/fullchain.pem" ]; then
+  # Already has a certificate (an earlier run): write the https site directly, so a rerun never drops it.
+  cat > "$CONF" <<NGINX
+# KnightVision at $DOMAIN: a static site, no backend. Written by deploy/server-setup.sh.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $DOMAIN;
+    return 301 https://\$host\$request_uri;
 }
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name $DOMAIN;
+    ssl_certificate $CERT/fullchain.pem;
+    ssl_certificate_key $CERT/privkey.pem;
+$SSL_EXTRA$LOCATIONS}
 NGINX
+else
+  cat > "$CONF" <<NGINX
+# KnightVision at $DOMAIN: a static site, no backend. Written by deploy/server-setup.sh.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $DOMAIN;
+$LOCATIONS}
+NGINX
+fi
 [ -n "$LINK" ] && ln -sf "$CONF" "$LINK"
 if ! nginx -t; then
-  rm -f "$CONF" ${LINK:+"$LINK"}
-  fail "nginx rejected the new site, so it was removed again; your other sites are untouched"
+  if [ -f "$CONF.bak" ]; then mv "$CONF.bak" "$CONF"; else rm -f "$CONF" ${LINK:+"$LINK"}; fi
+  fail "nginx rejected the new config, so the previous one was put back; your other sites are untouched"
 fi
+rm -f "$CONF.bak"
 systemctl reload nginx
 echo "nginx reloaded with $DOMAIN"
 
 say "5/6 HTTPS"
 here=$(curl -fs4 --max-time 5 https://api.ipify.org || hostname -I | awk '{print $1}')
 there=$(getent ahostsv4 "$DOMAIN" | awk 'NR==1{print $1}' || true)
-if [ "$there" != "$here" ]; then
+if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+  echo "Already has a certificate (renews automatically); the https site was written above."
+elif [ "$there" != "$here" ]; then
   echo "$DOMAIN points to '${there:-nothing}', but this server is $here."
   echo "Add the DNS A record (knightvision -> $here) at GoDaddy, wait a few minutes, then run:"
   echo "  certbot --nginx -d $DOMAIN --redirect"
