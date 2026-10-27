@@ -1,0 +1,184 @@
+:root {
+  --paper: #F6F4EF;
+  --ink: #111111;
+  --graphite: #8A8A86;
+  --rule: #D6D3CB;
+  --shade: #E4E1D8;
+  --measure: 65ch;
+  --wide: 960px;
+  color-scheme: light; /* the notebook is paper; it does not invert */
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 18px/1.6 'Schibsted Grotesk', system-ui, sans-serif;
+  font-feature-settings: 'kern', 'liga';
+}
+
+.essay { padding: 0 16px 4rem; overflow-x: clip; }
+.essay > *, section > * { max-width: var(--measure); margin-left: auto; margin-right: auto; }
+section > .fig.wide, .essay > .fig.wide { max-width: var(--wide); }
+
+.masthead { padding: 4.5rem 0 1rem; border-bottom: 1.5px solid var(--ink); }
+h1 { font-size: clamp(2.8rem, 9vw, 5.5rem); line-height: 0.95; font-weight: 700; letter-spacing: -0.035em; margin: 0 0 1.25rem; }
+.standfirst { font-size: clamp(1.25rem, 3.4vw, 1.6rem); line-height: 1.35; margin: 0 0 1.25rem; max-width: 30ch; }
+.byline { color: var(--graphite); font-size: 0.95rem; margin: 0 0 0.5rem; }
+
+h2 { font-size: 1.65rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.015em; margin: 3.5rem auto 1rem; }
+p { margin-top: 0; margin-bottom: 1.1rem; }
+em { font-style: italic; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+.num { font-family: 'Fragment Mono', ui-monospace, monospace; font-size: 0.88em; font-variant-numeric: tabular-nums; }
+.dim { color: var(--graphite); }
+.glyph, .g { font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', sans-serif; }
+
+/* Figures */
+.fig { margin-top: 2.5rem; margin-bottom: 2.75rem; }
+.fig svg, .fig canvas { display: block; width: 100%; height: auto; }
+figcaption, .table-caption { font-size: 0.86rem; line-height: 1.5; max-width: var(--measure); margin: 1rem auto 0; }
+figcaption b, .table-caption b { font-weight: 700; }
+.axis { font: 11px 'Fragment Mono', monospace; fill: var(--graphite); }
+
+/* Controls: ink rectangles, no rounding, sentence case */
+button {
+  font: 500 0.88rem/1 'Schibsted Grotesk', system-ui, sans-serif;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--ink); border-radius: 0;
+  padding: 0.5rem 0.75rem; min-height: 36px; cursor: pointer;
+}
+button:hover { background: var(--shade); }
+button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.controls.quiet button { border-color: var(--graphite); font-weight: 400; }
+
+.scrubber { display: flex; align-items: center; gap: 0.4rem; margin-top: 1.25rem; max-width: 680px; margin-left: auto; margin-right: auto; }
+.scrubber .play { min-width: 4.5rem; }
+.scrubber button:not(.play) { width: 36px; padding: 0; font-size: 1.2rem; }
+.position { display: block; text-align: center; font-size: 0.92rem; margin-top: 0.5rem; }
+
+input[type='range'] { flex: 1; min-width: 0; height: 36px; margin: 0 0.25rem; background: transparent; -webkit-appearance: none; appearance: none; }
+input[type='range']::-webkit-slider-runnable-track { height: 1px; background: var(--ink); }
+input[type='range']::-moz-range-track { height: 1px; background: var(--ink); }
+input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 22px; margin-top: -11px; background: var(--ink); border: 0; border-radius: 0; }
+input[type='range']::-moz-range-thumb { width: 14px; height: 22px; background: var(--ink); border: 0; border-radius: 0; }
+
+/* Figure 1 */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 14rem; gap: 2rem; align-items: end; }
+.hero > svg { max-width: 620px; }
+.legend-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem; }
+.hero-legend ol { list-style: none; margin: 0; padding: 0; }
+.hero-legend li { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 0.75rem; padding: 0.3rem 0; border-top: 1px solid var(--rule); }
+.hero-legend .bar { width: 48px; height: 20px; }
+.san { font-weight: 500; }
+
+/* Figure 2 */
+.sheets-fig { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 2rem; align-items: center; }
+.sheets-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.9rem 0.6rem; }
+.sheet-tag { display: flex; align-items: baseline; gap: 0.3rem; font-size: 0.78rem; margin-top: 0.3rem; }
+.sheet-tag .g { font-size: 1rem; line-height: 1; }
+.sheet-tag .dim { margin-left: auto; }
+.g-w { color: var(--paper); -webkit-text-stroke: 0.9px var(--ink); }
+.turn-note { text-align: center; font-size: 0.92rem; margin: 1.25rem auto 0; border: 1px dashed var(--graphite); padding: 0.5rem 0.75rem; max-width: 34rem; }
+
+/* Figure 3 */
+.quilt { max-width: 680px; margin: 0 auto; touch-action: pan-y; }
+.quilt canvas { cursor: crosshair; }
+.quilt-stats { display: flex; flex-wrap: wrap; gap: 0.4rem 1.5rem; max-width: 680px; margin: 0 auto 1rem; font-size: 0.9rem; }
+.stat { display: flex; align-items: center; gap: 0.45rem; }
+.swatch { width: 12px; height: 12px; border: 2px solid; flex: none; }
+.swatch.none { border-color: transparent; width: 0; margin-right: -0.45rem; }
+.stat-label { color: #4a4a47; }
+.readout { text-align: center; font-size: 0.92rem; min-height: 1.6em; margin: 0.75rem auto 0; white-space: pre-wrap; }
+.quilt-key { display: flex; justify-content: center; gap: 1.25rem; margin-top: 0.75rem; font-size: 0.85rem; }
+.quilt-key > span { display: flex; align-items: center; gap: 0.35rem; }
+.quilt-key svg { width: 16px; height: 16px; }
+
+/* Figure 4 and Table 1 */
+.segmented { display: flex; justify-content: center; margin-bottom: 1.25rem; }
+.segmented button + button { border-left: 0; }
+.mirror-board { max-width: 420px; margin: 0 auto; }
+.move-tag { border-bottom: 2px solid; padding-bottom: 1px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th { text-align: left; font-weight: 700; padding: 0.5rem 0.75rem 0.5rem 0; border-bottom: 1.5px solid var(--ink); white-space: nowrap; }
+td { padding: 0.45rem 0.75rem 0.45rem 0; border-bottom: 1px solid var(--rule); }
+tr.this-one td { background: var(--shade); }
+td:first-child { padding-left: 0.4rem; }
+.key { display: inline-block; width: 10px; height: 10px; margin-right: 0.4rem; }
+
+.colophon { display: flex; justify-content: space-between; gap: 1rem; margin-top: 4rem; padding-top: 1rem; border-top: 1.5px solid var(--ink); font-size: 0.95rem; }
+
+@media (max-width: 720px) {
+  body { font-size: 17px; }
+  .masthead { padding-top: 3rem; }
+  .hero, .sheets-fig { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+  .sheets-board { max-width: 360px; margin: 0 auto; width: 100%; }
+  .sheets-grid { gap: 0.6rem 0.35rem; }
+  .sheet-tag { font-size: 0.7rem; gap: 0.15rem; }
+  .sheet-tag .dim { display: none; }
+  .quilt-key { gap: 0.75rem; }
+}
+
+/* Figure 1 settles after its overture: the rings go quiet so the arrows can be read. */
+.ring { transition: stroke 1.2s, opacity 1.2s; }
+.settled .ring { stroke: var(--graphite); opacity: 0.32; }
+
+/* Figure 6's magnifier sits beside the grid on wide screens, below it on narrow ones. */
+.quilt-wrap { display: grid; grid-template-columns: minmax(0, 680px) 15rem; gap: 1.75rem; justify-content: center; align-items: start; }
+.quilt-wrap .quilt { margin: 0; width: 100%; }
+.loupe { position: sticky; top: 1rem; }
+.loupe svg { display: block; width: 100%; height: auto; }
+.loupe-title { font-weight: 700; font-size: 0.95rem; margin: 0 0 0.5rem; }
+.loupe-title .dim { font-weight: 400; }
+.loupe-num { font: 7.5px 'Fragment Mono', monospace; fill: var(--ink); }
+.loupe-note { font-size: 0.8rem; margin: 0.5rem 0 0; }
+@media (max-width: 960px) {
+  .quilt-wrap { grid-template-columns: minmax(0, 1fr); }
+  .loupe { position: static; max-width: 320px; margin: 0 auto; width: 100%; }
+}
+
+/* Margin notes: in the right margin beside their paragraph on wide screens, inline asides on narrow ones. */
+section { position: relative; }
+.side {
+  font-size: 0.82rem; line-height: 1.5; color: #4a4a47;
+  border-left: 2px solid var(--ink); padding: 0.1rem 0 0.1rem 0.75rem; margin-bottom: 1.1rem;
+}
+@media (min-width: 1180px) {
+  .side { position: absolute; width: 13.5rem; margin: 0; }
+}
+
+/* Plots (Figures 2 and 7) */
+.plot { max-width: 680px; margin: 0 auto; touch-action: none; }
+.plot svg { cursor: ew-resize; }
+.plot-label { font: 12px 'Schibsted Grotesk', sans-serif; fill: var(--ink); }
+
+/* Figure 4: board, filter, output */
+.conv { display: grid; grid-template-columns: minmax(0, 1fr) 13rem minmax(0, 1fr); gap: 1.5rem; align-items: center; max-width: var(--wide); margin: 0 auto; }
+.conv-board svg, .conv-out svg { touch-action: none; cursor: grab; }
+.conv-label { font-size: 0.82rem; margin: 0 0 0.5rem; text-align: center; color: #4a4a47; }
+.filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45rem; }
+.filter-grid div { text-align: center; font-size: 0.75rem; }
+.filter-grid svg { display: block; width: 100%; height: auto; }
+
+/* Figure 5: eight small boards in a row */
+.reach-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.6rem; max-width: var(--wide); margin: 0 auto; }
+.reach-mini svg { cursor: pointer; touch-action: none; }
+.reach-stage { text-align: center; font-size: 0.78rem; margin: 0.3rem 0 0; }
+
+.colophon { flex-wrap: wrap; align-items: baseline; }
+.colophon p { margin: 0; max-width: 46ch; font-size: 0.88rem; color: #4a4a47; }
+.colophon nav { display: flex; gap: 1.25rem; }
+
+@media (max-width: 720px) {
+  .conv { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .conv-board, .conv-out { max-width: 320px; margin: 0 auto; width: 100%; }
+  .filter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .reach-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .segmented { flex-wrap: wrap; }
+}

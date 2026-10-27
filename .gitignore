@@ -72,3 +72,10 @@ build/
 
 # Local dev env
 .idea/
+# === Web ===
+web/node_modules/
+web/dist/
+# 25 MB model; copy it from the portfolio or re-export it (see web/README.md)
+web/public/knightvision.onnx
+# The site's exported network data is small and needed to build; keep it despite the data/ rule above.
+!web/src/data/

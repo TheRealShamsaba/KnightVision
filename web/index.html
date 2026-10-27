@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KnightVision</title>
+  <meta name="description" content="KnightVision, a chess network that looks once and moves, told through the mail: a telegram, a parcel, an envelope, a newspaper clipping, a stamp album. Then you play it by post.">
+  <meta name="theme-color" content="#C9C4B7">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <button class="sound" type="button" aria-pressed="false">sound: off</button>
+
+  <!-- Worn rubber: noise punches small voids into postmarks and stamps. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="worn"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3.2 2.5" result="m"/>
+      <feComposite in="SourceGraphic" in2="m" operator="in"/></filter>
+  </svg>
+
+  <main>
+    <!-- 1. A postcard -->
+    <section class="slot" id="hello">
+      <article class="card" style="--tilt:-1.3deg">
+        <div class="body front">
+          <h1 data-ink="KnightVision">KnightVision</h1>
+          <figure class="board"><canvas id="opera-board" role="img" aria-label="The Opera Game, Paris 1858, before White's sixth move, with arrows for the network's three favourite moves"></canvas></figure>
+          <div class="msg">
+            <p class="lede">A chess network that never calculates. It looks once, and moves.</p>
+            <p class="typed">paris, 1858: the opera game, white to play move six. i didn't look a single move ahead. i looked at the board once and wrote back:</p>
+            <ol class="moves" id="opera-moves"></ol>
+            <p class="typed small">the game went 6.Bc4 too. the rest of this mail explains how i got there. at the end, it's your move.</p>
+          </div>
+        </div>
+        <aside class="address">
+          <canvas class="postage" data-value="935" data-unit="elo ±99" data-piece="n" role="img" aria-label="Stamp: 935 Elo, plus or minus 99"></canvas>
+          <div class="postmark" data-top="paris" data-bottom="opera game" data-mid="1858"></div>
+          <div class="to"><p>to: whoever moves next</p><p>from: knightvision</p><p data-fill="weights">25.4m weights</p><p>one look, no search</p></div>
+        </aside>
+      </article>
+    </section>
+
+    <!-- 2. A telegram -->
+    <section class="slot" id="telegram">
+      <article class="telegram" style="--tilt:0.8deg">
+        <header class="tg-head">
+          <span class="tg-brand">TELEGRAM</span>
+          <span class="tg-meta">istanbul · <span data-tg-clock>june 2025</span></span>
+        </header>
+        <div class="tg-form">
+          <p class="tg-label">sender</p><p class="tg-field">istanbul aydın university, computer engineering</p>
+          <p class="tg-label">to</p><p class="tg-field">the jury</p>
+        </div>
+        <div class="tapes" data-tapes aria-live="polite"></div>
+        <footer class="tg-foot"><span>words: <b data-tg-words>0</b></span><span>charge: one graduation</span></footer>
+      </article>
+    </section>
+
+    <!-- 3. A parcel of index cards -->
+    <section class="slot" id="parcel">
+      <article class="parcel" style="--tilt:-0.6deg">
+        <div class="parcel-label">
+          <p class="pl-top">contents: chess games, human</p>
+          <p class="pl-big"><span data-fill="games">84,000</span><small>games</small></p>
+          <p class="pl-sub">pgn → jsonl · about five million positions · handle with care</p>
+          <div class="pl-stamps"><span class="customs">customs: no engine games</span></div>
+        </div>
+        <div class="parcel-body">
+          <h2 data-ink="What I learned from">What I learned from</h2>
+          <p class="typed">people, mostly. we took 84,000 human games and cut every one into positions: the board before a move, the move the person played, and who won in the end. one line of a file each. i was shown about five million of them, one at a time, and asked to guess the move.</p>
+          <div class="riffle" data-riffle tabindex="0" role="button" aria-label="Flip through training records"></div>
+          <p class="typed small">click the cards to flip through. this is the exact format i was fed, filled in with the opera game.</p>
+        </div>
+      </article>
+    </section>
+
+    <!-- 4. An envelope -->
+    <section class="slot" id="envelope">
+      <article class="envelope" style="--tilt:0.7deg">
+        <div class="env-copy">
+          <h2 data-ink="What I see">What I see</h2>
+          <p class="typed">you see a chessboard. i get an envelope of twelve sheets, one per kind of piece, each an 8×8 stamp: inked where that piece stands, blank everywhere else. white in purple, black in blue.</p>
+          <p class="typed small">p.s. none of the sheets says whose turn it is. nobody tells me.</p>
+          <figure class="sees-board"><canvas id="sees-board" role="img" aria-label="The position the sheets are drawn from"></canvas></figure>
+          <div class="scrub" data-scrub></div>
+        </div>
+        <div class="env" data-env>
+          <div class="env-back"></div>
+          <div class="sheets" id="sheets"></div>
+          <div class="env-front"><span class="env-addr">to: the first layer<br>12 sheets, 768 squares</span></div>
+          <div class="env-flap"></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 5. A blueprint -->
+    <section class="slot" id="office">
+      <article class="blueprint" style="--tilt:-0.9deg">
+        <header class="bp-head">
+          <h2>The sorting office</h2>
+          <p class="bp-title">drawing no. 2 · plan of the network · not to scale</p>
+        </header>
+        <p class="bp-note">the sheets pass through eight rooms, left to right, once. each room looks at every square and its neighbours and passes on what it noticed. no going back, no looking ahead. by room five, a corner square can feel the whole board.</p>
+        <div class="bp-scroll"><ol class="rooms" id="rooms"></ol></div>
+        <p class="bp-note small">inside each room: the six busiest of its channels for the opera game position, real readings. bigger dot, stronger signal. <span data-fill="weights-note"></span></p>
+      </article>
+    </section>
+
+    <!-- 6. A printer's proof -->
+    <section class="slot" id="proof">
+      <article class="proof" style="--tilt:0.5deg">
+        <i class="crop tl"></i><i class="crop tr"></i><i class="crop bl"></i><i class="crop br"></i>
+        <div class="proof-grid">
+          <figure class="quilt" id="quilt">
+            <canvas class="ink" role="img" aria-label="4,096 move scores as a 64 by 64 grid of dots"></canvas>
+            <canvas class="hover" aria-hidden="true"></canvas>
+          </figure>
+          <div class="msg">
+            <p class="proof-slug" data-proof-slug></p>
+            <h2 data-ink="What I say back">What I say back</h2>
+            <p class="typed">i answer with 4,096 numbers: every square a piece could leave, times every square it could land on. most of them are nonsense, and i know it.</p>
+            <p class="typed">each big block is a from-square. the dots inside are where to. bigger dot, surer me.</p>
+            <p class="typed" id="say-circled"></p>
+            <div class="scrub" data-scrub></div>
+            <p class="readout" id="readout" aria-live="polite">point at a dot to read it.</p>
+          </div>
+        </div>
+        <div class="colour-bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </article>
+    </section>
+
+    <!-- 7. A marked paper -->
+    <section class="slot" id="graded">
+      <article class="paper" style="--tilt:-1deg">
+        <header class="paper-head">
+          <p>name: <u>knightvision</u></p><p>subject: <u>what would a person play?</u></p>
+          <div class="grade" data-grade></div>
+        </header>
+        <p class="paper-q">q. after 1.e4 e5, white to move. what did the person play?</p>
+        <div class="answers">
+          <figure class="answer"><p class="attempt">first attempt, untrained</p><canvas id="learn-before" role="img" aria-label="Before training: guesses scattered across many moves"></canvas>
+            <ol class="guesses" id="guess-before"></ol></figure>
+          <figure class="answer"><p class="attempt">after five million positions</p><canvas id="learn-after" role="img" aria-label="After training: most belief on Nf3"></canvas>
+            <ol class="guesses" id="guess-after"></ol></figure>
+        </div>
+        <p class="remark" id="learn-remark"></p>
+        <dl class="facts" id="learn-facts"></dl>
+      </article>
+    </section>
+
+    <!-- 8. A newspaper clipping -->
+    <section class="slot" id="clipping">
+      <article class="clipping" style="--tilt:1.1deg">
+        <p class="masthead">the knightvision gazette · late edition</p>
+        <h2 class="headline">Chess engine played two years with its board upside down</h2>
+        <p class="standfirst">Graduation report listed seven mistakes. The eighth, found afterwards, was a rubber stamp.</p>
+        <div class="columns">
+          <figure class="photo" id="stage">
+            <canvas role="img" aria-label="A rubber stamp carved with the plane order P N B R Q K presses onto an orange board and prints it upside down"></canvas>
+            <figcaption>The stamp in question. Carved readable: P N B R Q K. Printed: K Q R B N P, upside down.</figcaption>
+          </figure>
+          <div class="story">
+            <p class="dropcap">The jury in June 2025 heard about seven mistakes: a monolithic training loop, a tangled codebase, no checkpoint schedule, untested early hyperparameters, sparse documentation, evaluation scripts written too late, and a reward function with blind spots.</p>
+            <p>The eighth was found only after graduation. The network had learned from boards encoded one way, and every program that later used it encoded them another. Its sheets arrived as K Q R B N P instead of P N B R Q K: kings read as pawns, queens as knights, and every answer read upside down.</p>
+            <p>“It wasn’t bad at chess,” said a source close to the engine. “It was shown a board that doesn’t exist.”</p>
+            <div class="prints">
+              <figure class="print"><canvas id="print-v2" role="img" aria-label="After 1.e4 e5, the real board, arrow for Nf3"></canvas>
+                <figcaption>What it learned: <b id="v2-move"></b></figcaption></figure>
+              <figure class="print"><canvas id="print-v1" role="img" aria-label="The same position as v1 sent it, pieces swapped, arrow for Ke2"></canvas>
+                <figcaption>What it was shown: <b id="v1-move"></b></figcaption></figure>
+            </div>
+            <p class="small">One encoder now serves training and play alike, and a test checks the two agree, ply by ply, over random games. The king has been informed.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 9. A stamp album -->
+    <section class="slot" id="album">
+      <article class="album" style="--tilt:-0.4deg">
+        <header class="album-head">
+          <h2 data-ink="The collection">The collection</h2>
+          <div class="rare"><canvas class="postage big" data-value="935" data-unit="elo, ±99" data-piece="k" role="img" aria-label="Rare stamp: 935 Elo"></canvas>
+            <p class="typed small">the rare one. my rating, give or take 99, from <span data-fill="games-played">160</span> games against stockfish held to 1320 and 1400 elo.</p></div>
+        </header>
+        <figure class="sheet-page"><canvas id="album-page" role="img" aria-label="Every game as a stamp: won, drawn or lost"></canvas>
+          <figcaption class="typed small key"><span><i class="k-won"></i>won, mint</span><span><i class="k-drawn"></i>drawn, half</span><span><i class="k-lost"></i>lost, cancelled</span></figcaption></figure>
+        <p class="typed" id="album-text"></p>
+      </article>
+    </section>
+
+    <!-- 10. Play by mail -->
+    <section class="slot" id="play">
+      <article class="card mail" style="--tilt:0.5deg" id="mail">
+        <div class="body play">
+          <div class="mail-left">
+            <h2 data-ink="Your move">Your move</h2>
+            <figure class="mail-board">
+              <canvas class="ink" role="img" aria-label="The game board"></canvas>
+              <canvas class="marks" aria-label="Click a piece, then a square"></canvas>
+              <div class="letterbox">
+                <button class="wake" type="button" data-wake>open the letterbox<small>25 mb · i run on your device</small></button>
+                <div class="meter" data-meter hidden><span></span></div>
+              </div>
+            </figure>
+            <p class="typed status" data-status aria-live="polite"></p>
+            <div class="controls">
+              <button type="button" data-new="w">new game as white</button>
+              <button type="button" data-new="b">as black</button>
+              <button type="button" data-undo disabled>take back</button>
+            </div>
+          </div>
+          <div class="mail-right">
+            <p class="typed small">my replies arrive here, newest on top.</p>
+            <div class="stack" data-stack aria-live="polite"></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 11. The back of the envelope -->
+    <section class="slot end" id="signoff">
+      <article class="back" style="--tilt:-1.6deg">
+        <div class="seal" aria-hidden="true">kv</div>
+        <p class="quote">“A React or Next.js front-end could enable users to play against the engine, review their games, and visualize move probabilities or suggested continuations.”</p>
+        <p class="typed small">— our graduation report, june 2025, under future work. this is that (minus the react).</p>
+        <div class="return">
+          <p class="typed">return address:</p>
+          <p class="typed">aryan alishamsabadifard &amp; baker waleed salem aldhmour<br>computer engineering, istanbul aydın university<br>supervised by dr. alparslan horasan</p>
+        </div>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="/src/site/main.ts"></script>
+</body>
+</html>
