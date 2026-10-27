@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KnightVision · Correspondence</title>
+  <meta name="description" content="KnightVision, a chess network that looks once and moves, told as postcards from a game played by mail.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <button class="sound" type="button" aria-pressed="false">sound: off</button>
+
+  <!-- Worn rubber: noise punches small voids into the postmarks. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="worn"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3.2 2.5" result="m"/>
+      <feComposite in="SourceGraphic" in2="m" operator="in"/></filter>
+  </svg>
+
+  <main>
+    <section class="slot">
+      <article class="card" style="--tilt:-1.3deg">
+        <div class="body front">
+          <h1 data-ink="KnightVision">KnightVision</h1>
+          <figure class="board">
+            <canvas id="opera-board" role="img" aria-label="The Opera Game, Paris 1858, before White's sixth move, with arrows for Bc4, Nc3 and Be2"></canvas>
+          </figure>
+          <div class="msg">
+            <p class="lede">A chess network that never calculates. It looks once, and moves.</p>
+            <p class="typed">paris, 1858: the opera game, white to play move six. i didn't look a single move ahead. i looked at the board once and wrote back:</p>
+            <ol class="moves" id="opera-moves"></ol>
+            <p class="typed small">the game went 6.Bc4 too.</p>
+          </div>
+        </div>
+        <aside class="address">
+          <canvas class="postage" data-value="935" data-unit="elo ±99" data-piece="n" role="img" aria-label="Stamp: 935 Elo, plus or minus 99"></canvas>
+          <div class="postmark" data-top="paris" data-bottom="opera game" data-mid="1858"></div>
+          <div class="to"><p>to: whoever moves next</p><p>from: knightvision</p><p>25.4m weights</p><p>one look, no search</p></div>
+        </aside>
+      </article>
+    </section>
+
+    <section class="slot">
+      <article class="card" style="--tilt:0.9deg">
+        <div class="body">
+          <h2 data-ink="What it sees">What it sees</h2>
+          <p class="typed">you see a chessboard. i get twelve sheets, each an 8×8 stamp for one kind of piece: inked where that piece stands, blank everywhere else. white in purple, black in blue. same position as the last card.</p>
+          <div class="sheets" id="sheets"></div>
+          <p class="typed small">p.s. none of the sheets says whose turn it is. nobody tells me.</p>
+        </div>
+        <aside class="address">
+          <canvas class="postage" data-value="12" data-unit="sheets" data-piece="p" role="img" aria-label="Stamp: 12 sheets"></canvas>
+          <div class="postmark" data-top="input" data-bottom="p n b r q k" data-mid="8×8"></div>
+          <div class="to"><p>to: the first layer</p><p>twelve sheets enclosed</p><p>please keep in order</p></div>
+        </aside>
+      </article>
+    </section>
+
+    <section class="slot">
+      <article class="card" style="--tilt:-0.7deg">
+        <div class="body output">
+          <figure class="quilt" id="quilt">
+            <canvas class="ink" role="img" aria-label="4,096 move scores as a 64 by 64 grid of dots"></canvas>
+            <canvas class="hover" aria-hidden="true"></canvas>
+          </figure>
+          <div class="msg">
+            <h2 data-ink="What it says back">What it says back</h2>
+            <p class="typed">i answer with 4,096 numbers: every square a piece could leave, times every square it could land on. most of them are nonsense, and i know it.</p>
+            <p class="typed">each big block is a from-square. the dots inside are where to. bigger dot, surer me.</p>
+            <p class="typed">circled: the bishop, f1 to c4. it got <span id="share"></span> of what i gave to legal moves. <span id="legal"></span> of my ink landed on legal moves at all; the rest went on moves that aren't moves.</p>
+            <p class="typed small">dot size is on a log scale. no dot at all means one in ten million, or less.</p>
+            <p class="readout" id="readout" aria-live="polite">point at a dot to read it.</p>
+          </div>
+        </div>
+        <aside class="address">
+          <canvas class="postage" data-value="4096" data-unit="numbers" data-piece="b" role="img" aria-label="Stamp: 4096 numbers"></canvas>
+          <div class="postmark" data-top="output" data-bottom="from × to" data-mid="64×64"></div>
+          <div class="to"><p>to: whoever reads me</p><p>re: move six</p><p>4,096 numbers enclosed</p></div>
+        </aside>
+      </article>
+    </section>
+
+    <section class="slot">
+      <article class="card" style="--tilt:1.2deg">
+        <div class="body bug">
+          <figure class="stage" id="stage">
+            <canvas role="img" aria-label="A rubber stamp carved with the plane order P N B R Q K presses onto an orange board and prints it upside down"></canvas>
+            <figcaption class="typed small">carved readable: P N B R Q K. printed: K Q R B N P, and the board upside down.</figcaption>
+          </figure>
+          <div class="msg">
+            <h2 data-ink="Stamps print backwards">Stamps print backwards</h2>
+            <p class="typed">for two years every program that used me fed me the board through a stamp nobody had checked. my sheets came K Q R B N P instead of P N B R Q K. kings arrived as pawns, queens as knights, rooks as bishops, bishops as rooks, knights as queens, pawns as kings. and my answers were read upside down.</p>
+            <div class="prints">
+              <figure class="print"><canvas id="print-v2" role="img" aria-label="After 1.e4 e5, the real board, arrow for Nf3"></canvas>
+                <figcaption>front, what i learned:<br><b id="v2-move"></b></figcaption></figure>
+              <figure class="print"><canvas id="print-v1" role="img" aria-label="The same position as v1 sent it, pieces swapped, arrow for Ke2"></canvas>
+                <figcaption>what v1 showed me:<br><b id="v1-move"></b></figcaption></figure>
+            </div>
+            <p class="typed small">both after 1.e4 e5. it's fixed now. sorry about the king.</p>
+          </div>
+        </div>
+        <aside class="address">
+          <canvas class="postage" data-value="v2" data-unit="fixed" data-piece="k" role="img" aria-label="Stamp: v2, fixed"></canvas>
+          <div class="postmark" data-top="returned" data-bottom="mirrored" data-mid="v1"></div>
+          <div class="to"><p>to: every program</p><p>that ever read me</p><p>two years of mail</p><p>return to sender</p></div>
+        </aside>
+      </article>
+    </section>
+
+    <section class="slot end">
+      <article class="card small" style="--tilt:-1.8deg">
+        <div class="body">
+          <p class="typed">that's the whole correspondence. thanks for reading my mail.</p>
+          <nav class="links"><a href="./index.html">← all three directions</a><a href="/">Full site</a></nav>
+        </div>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="/src/prototypes/correspondence/main.ts"></script>
+</body>
+</html>

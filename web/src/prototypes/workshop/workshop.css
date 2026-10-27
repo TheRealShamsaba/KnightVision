@@ -1,0 +1,79 @@
+:root {
+  --paper: #F3EDE2;
+  --maple: #E3CFA4;
+  --beech: #B9824E;
+  --baize: #2E5A45;
+  --ink: #1E1B17;
+  --red: #C0392B;
+  --muted: #62574b;
+}
+
+html { background: var(--baize); }
+body { margin: 0; color: var(--ink); font: 400 17px/1.6 Literata, Georgia, serif; -webkit-font-smoothing: antialiased; }
+
+.table { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+main { position: relative; }
+
+.beat { min-height: 170vh; }
+.beat:last-child { min-height: 210vh; }
+
+/* Index cards laid on the table, each set down a little crooked. */
+.card {
+  position: sticky; top: 13vh;
+  width: min(390px, 34vw); margin-left: 5vw; padding: 28px 30px 26px;
+  background: var(--paper); border-radius: 2px;
+  box-shadow: 0 1px 1px rgba(30, 27, 23, 0.14), 0 22px 34px -20px rgba(10, 20, 14, 0.7);
+  transform: rotate(var(--tilt, -0.5deg));
+}
+.beat:nth-child(even) .card { --tilt: 0.4deg; }
+
+h1, h2 { font-family: Jost, sans-serif; font-weight: 500; letter-spacing: -0.015em; margin: 0 0 0.35em; }
+h1 { font-size: clamp(2.5rem, 4.6vw, 3.6rem); line-height: 1; }
+h2 { font-size: 1.75rem; line-height: 1.1; }
+p { margin: 0 0 0.8em; }
+.lead { font-size: 1.16rem; line-height: 1.45; }
+.note { font-size: 0.88rem; color: var(--muted); margin: 0; }
+.pick { color: var(--red); font-style: italic; }
+
+/* The network's top choices, heavier marks for more belief. */
+.candidates {
+  list-style: none; padding: 0; margin: 18px 0 20px;
+  display: grid; grid-template-columns: 3.4em 1fr 3em; gap: 7px 12px; align-items: center;
+}
+.candidates li { display: contents; }
+.candidates b { font: 500 1rem Jost, sans-serif; }
+.candidates i { display: block; height: calc(1.5px + var(--p) * 9px); width: calc(4px + var(--p) * 100%); background: var(--red); border-radius: 4px; opacity: calc(0.45 + var(--p)); }
+.candidates span { font-size: 0.88rem; text-align: right; font-variant-numeric: tabular-nums; }
+
+.flip {
+  font: 500 1rem Jost, sans-serif; color: var(--ink); background: transparent;
+  border: 1.5px solid var(--ink); border-radius: 3px; padding: 8px 15px; margin-top: 6px; cursor: pointer;
+}
+.flip:hover { background: var(--maple); }
+
+.sound {
+  position: fixed; top: 14px; right: 16px; z-index: 2;
+  font: 500 0.95rem Jost, sans-serif; color: var(--ink); background: var(--paper);
+  border: 0; border-radius: 2px; padding: 7px 13px; cursor: pointer;
+  box-shadow: 0 10px 20px -12px rgba(10, 20, 14, 0.7);
+}
+.sound[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 4px; }
+
+button:focus-visible, a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+footer {
+  position: relative; display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: center;
+  padding: 26px 16px 34px; background: var(--paper); font-family: Jost, sans-serif;
+}
+footer a { color: var(--ink); text-decoration-color: var(--beech); text-underline-offset: 4px; }
+
+/* Phones: the table takes the top of the screen, cards slide up over the lower part. */
+@media (max-width: 819px) {
+  .beat { min-height: 150vh; padding: 56vh 16px 0; box-sizing: border-box; }
+  .beat:last-child { min-height: 190vh; }
+  .card { position: relative; top: auto; width: auto; margin: 0; padding: 22px 20px; }
+  .sound { top: 10px; right: 10px; }
+}
+
+/* The menu, on the same paper as the cards. */
+.kv-nav.nav-desk { --nav-font: Jost, sans-serif; --nav-display: Jost, sans-serif; --nav-bg: var(--paper); --nav-fg: var(--ink); --nav-accent: var(--red); }

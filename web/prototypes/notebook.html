@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KnightVision · Notebook</title>
+  <meta name="description" content="A chess network that never calculates, explained in eight figures you can handle: how it learned, what it sees, a real convolution, what it says, how strong it is, and the bug.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&family=Fragment+Mono&family=Noto+Sans+Symbols+2&display=swap">
+</head>
+<body>
+  <main class="essay">
+    <header class="masthead">
+      <h1>KnightVision</h1>
+      <p class="standfirst">A chess network that never calculates. It looks once, and moves.</p>
+      <p class="byline">A notebook in eight figures. <span class="num" data-fact="params"></span> weights, about <span class="num" data-fact="elo"></span> Elo. Every figure is computed from the real network.</p>
+    </header>
+
+    <figure class="fig wide" id="fig-hero"></figure>
+
+    <section>
+      <h2>Looking once</h2>
+      <p>Most chess programs search. They try a move, imagine the reply, imagine the reply to that, and keep going until the clock objects. KnightVision does none of this. It is a convolutional network with <span class="num" data-fact="params"></span> weights, and it gets exactly one look at the board.</p>
+      <aside class="side">The Opera Game: Paul Morphy against the Duke of Brunswick and Count Isouard, played in a box at the Paris opera in 1858. Its position before 6.Bc4 appears throughout.</aside>
+      <p>Out of that look come 4,096 scores, one for every pairing of a square to move from and a square to move to. The highest-scoring legal move is the move. Against Stockfish this is worth about <span class="num" data-fact="elo"></span> Elo, give or take <span class="num" data-fact="margin"></span>, over <span class="num" data-fact="games"></span> games. Not bad for something that never wonders what happens next.</p>
+      <aside class="side">A searching engine like Stockfish weighs millions of positions before each move. KnightVision weighs one.</aside>
+    </section>
+
+    <section>
+      <h2>How it learned</h2>
+      <p>By imitation. We took 84,000 human games and cut each one into positions: the board before a move, paired with the move the person played. That made about five million examples. For each, the network guessed, the guess was scored, and every weight was nudged a little in whichever direction would have scored better.</p>
+      <aside class="side">Why a logarithm? Confident mistakes should hurt. Giving the right move 1% costs 4.6. Giving it one in a million costs 13.8.</aside>
+      <p>The score is the loss in Figure 2: minus the log of the probability it gave the right move. That is all training is, repeated millions of times: batches of <span class="num" data-fact="batch"></span> positions, the Adam optimiser, and the best version arrived after <span class="num" data-fact="epochs"></span> passes over the data.</p>
+      <figure class="fig wide" id="fig-loss"></figure>
+    </section>
+
+    <section>
+      <h2>What it sees</h2>
+      <p>The network never sees a board. It sees twelve sheets of 8×8 numbers, one sheet for each kind of piece, in a fixed order: white pawn, knight, bishop, rook, queen, king, then the same six for Black. A cell is 1 if that piece stands on that square and 0 if not. That is the whole input: 768 cells, almost all of them empty.</p>
+      <aside class="side">AlphaZero's chess input has 119 planes: the last eight positions, plus whose turn it is, castling rights and repetition counts. This network gets 12.</aside>
+      <p>Notice what is missing. No sheet says whose turn it is. The network has to guess that from the position, the way you might guess it from a photograph.</p>
+      <figure class="fig wide" id="fig-sheets"></figure>
+    </section>
+
+    <section>
+      <h2>Inside: one filter, slid over the board</h2>
+      <p>The first thing the sheets meet is a convolution: a small filter, three squares by three, reaching through all twelve sheets at once. It is laid over every square of the board in turn. At each square it multiplies its 108 weights by the 1s beneath it, adds them up with a bias, and keeps the result only if it comes out positive.</p>
+      <aside class="side">Nobody designed these filters. They start as random numbers; training shapes them into detectors for whatever patterns helped it guess people's moves.</aside>
+      <p>Figure 4 lets you hold one of them. Slide the window and watch which pieces push the number up and which pull it down.</p>
+      <figure class="fig wide" id="fig-conv"></figure>
+      <p>A 3×3 window only sees neighbours. The trick is stacking: the next layer looks at 3×3 patches of the first layer's answers, so its view reaches two squares out, then three. Eight stages in, every square has heard from every other.</p>
+      <aside class="side">Five of the eight stages are residual blocks: they add their output to their input instead of replacing it. That shortcut is what made very deep networks trainable (He et al., 2015).</aside>
+      <figure class="fig wide" id="fig-reach"></figure>
+    </section>
+
+    <section>
+      <h2>What it says</h2>
+      <p>The answer is 4,096 numbers. Figure 6 lays them out as a board of boards: each of the 64 large blocks is a square a piece could move <em>from</em>, and the 64 cells inside it are the squares it could move <em>to</em>. The bigger the dot, the more the network believes in that move. The scale is logarithmic, because nearly every number is tiny. Hover a block to see it under the magnifier.</p>
+      <aside class="side">Softmax turns the 4,096 raw scores into probabilities: exp(score), divided by the sum of exp over all of them, so they add up to 1.</aside>
+      <p>Nobody told the network the rules. It learned them from examples, imperfectly, so some belief always leaks onto moves that cannot be played. Scrub to 14…Qe6 and its loudest cell is d1→d7, a move for White. Only about 4% of its belief lands on a legal move for Black. That is the price of not being told whose turn it is.</p>
+      <figure class="fig wide" id="fig-quilt"></figure>
+    </section>
+
+    <section>
+      <h2>How strong is one look?</h2>
+      <p>To put a number on it, KnightVision played <span class="num" data-fact="games"></span> games against Stockfish turned down to 1320 and 1400 Elo, with Stockfish on the clock its ratings are calibrated for: a minute, plus 0.6 seconds a move. It won <span class="num" data-fact="wins"></span> and drew <span class="num" data-fact="draws"></span>.</p>
+      <aside class="side">Elo's rule of thumb: a 400-point gap means the stronger player is expected to score about 91%.</aside>
+      <p>Figure 7 asks which rating best explains those results. The answer, <span class="num" data-fact="elo"></span>, is a beginner-to-club level of play, reached by pure pattern recognition with no lookahead at all.</p>
+      <figure class="fig wide" id="fig-elo"></figure>
+    </section>
+
+    <section>
+      <h2>Two years of the wrong board</h2>
+      <p>For two years, every program that used KnightVision fed it a scrambled board. The sheets went in as K Q R B N P instead of the P N B R Q K it was trained on. Kings arrived as pawns, queens as knights, rooks as bishops, bishops as rooks, knights as queens, and pawns as kings. On the way out, every move index was read upside down.</p>
+      <aside class="side">The fix: one encoder, used by training and play alike, and a test that replays random games and checks the boards and move numbers agree at every move.</aside>
+      <p>It still played chess, of a sort. After 1.e4 e5 it chose 2.Ke2. Given the board it actually learned on, it wants 2.Nf3.</p>
+      <p>Yoko Ono once made a chess set with both armies in white. Figure 8 borrows the idea: with every piece the same colour, you are about as well informed as the network. Pick a version and see what it was shown.</p>
+      <figure class="fig" id="fig-mirror"></figure>
+      <div class="table-wrap" id="mirror-table"></div>
+    </section>
+
+    <footer class="colophon">
+      <p>A graduation project, Computer Engineering, Istanbul Aydın University, June 2025. Aryan Alishamsabadifard and Baker Waleed Salem Aldhmour, supervised by Dr. Alparslan Horasan. Version 2.</p>
+      <nav><a href="./index.html">← all three directions</a> <a href="/">Full site</a></nav>
+    </footer>
+  </main>
+  <script type="module" src="/src/prototypes/notebook/main.ts"></script>
+</body>
+</html>

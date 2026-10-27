@@ -36,6 +36,7 @@ from scripts.self_play import generate_self_play_data
 from bot.telegram_utils import send_telegram_message
 from ai.model_utils import load_or_initialize_model
 from ai.model import ChessNet
+from ai import encode_board, encode_chess_move
 import argparse
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
@@ -536,26 +537,11 @@ class ChessPGNDataset(torch.utils.data.Dataset):
         return board_tensor, move_index, outcome
 
     def fen_to_tensor(self, fen):
-        board = chess.Board(fen)
-        piece_map = board.piece_map()
-        tensor = np.zeros((12, 8, 8), dtype=np.float32)
-        piece_to_plane = {
-            'P': 0, 'N': 1, 'B': 2, 'R': 3, 'Q': 4, 'K': 5,
-            'p': 6, 'n': 7, 'b': 8, 'r': 9, 'q': 10, 'k': 11
-        }
-        for square, piece in piece_map.items():
-            plane = piece_to_plane[piece.symbol()]
-            row = 7 - (square // 8)
-            col = square % 8
-            tensor[plane][row][col] = 1.0
-        return tensor
+        return encode_board(fen)
 
     def default_move_encoder(self, move_san, fen):
         board = chess.Board(fen)
-        move = board.parse_san(move_san)
-        from_square = move.from_square
-        to_square = move.to_square
-        return from_square * 64 + to_square
+        return encode_chess_move(board.parse_san(move_san))
 
     def extend(self, new_records):
         self.additional_data.extend(new_records)

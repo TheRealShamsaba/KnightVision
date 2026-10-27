@@ -1,0 +1,130 @@
+:root {
+  --paper: #F2EDE3;
+  --desk: #C9C4B7;
+  --orange: #FF6C2F;
+  --purple: #765BA7;
+  --blue: #3D5588;
+  --ink: #111;
+  --type: 'Courier Prime', ui-monospace, monospace;
+  --display: 'Bricolage Grotesque', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-snap-type: y mandatory; background: var(--desk); }
+/* Tall cards on small screens: let them scroll freely and only nudge into place. */
+@media (max-width: 760px), (max-height: 620px) { html { scroll-snap-type: y proximity; } }
+body {
+  margin: 0; color: var(--ink); font: 16px/1.55 var(--type);
+  background: var(--desk) var(--grain) 0 0 / 300px; background-blend-mode: multiply;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+
+.slot { min-height: 100svh; display: grid; place-items: center; padding: 6svh 16px; scroll-snap-align: center; }
+.slot.end { min-height: 70svh; }
+
+/* A postcard lying on the desk: message left, address right. */
+.card {
+  --tilt: 0deg;
+  position: relative; width: min(1080px, 100%);
+  display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: clamp(20px, 3vw, 40px);
+  padding: clamp(18px, 3.2vw, 40px);
+  background: var(--paper);
+  transform: rotate(var(--tilt));
+  box-shadow: 0 1px 1px rgba(60, 45, 30, .22), 0 2px 3px rgba(60, 45, 30, .10), 0 26px 30px -26px rgba(60, 45, 30, .55);
+  transition: transform .42s cubic-bezier(.3, .9, .35, 1.12), box-shadow .42s ease-out;
+}
+.card::after { /* newsprint grain over everything, ink included */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: var(--grain); background-size: 220px; mix-blend-mode: multiply; opacity: .6;
+}
+.slot:not(.landed) .card {
+  transform: translate(10px, -22px) rotate(calc(var(--tilt) * 2.6)) scale(1.02);
+  box-shadow: 0 3px 5px rgba(60, 45, 30, .12), 0 50px 50px -38px rgba(60, 45, 30, .45);
+}
+.card.small { width: min(540px, 100%); grid-template-columns: 1fr; }
+
+canvas { display: block; mix-blend-mode: multiply; }
+figure { margin: 0; }
+
+h1, h2 {
+  position: relative; margin: 0 0 .35em;
+  font-family: var(--display); font-optical-sizing: auto; font-weight: 760;
+  letter-spacing: -.03em; line-height: .9; color: var(--blue);
+}
+/* Second drum: the same words in orange, a hair out of register. */
+h1::after, h2::after {
+  content: attr(data-ink); position: absolute; left: 0; top: 0; right: 0;
+  color: var(--orange); mix-blend-mode: multiply; transform: translate(2px, 1.5px); pointer-events: none;
+}
+h1 { grid-column: 1 / -1; font-size: clamp(44px, 8vw, 104px); margin-bottom: .1em; }
+h1::after { transform: translate(3px, 2px); }
+h2 { font-size: clamp(34px, 4.6vw, 58px); }
+.lede { font: 400 clamp(19px, 2vw, 24px)/1.22 var(--display); letter-spacing: -.01em; margin: 0 0 1.1em; max-width: 22em; }
+.typed { margin: 0 0 .8em; max-width: 38em; font-size: 15.5px; }
+.typed.small, .small { font-size: 13.5px; color: #3a3631; }
+
+/* Card 1 */
+.front { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 0 clamp(20px, 3vw, 40px); align-items: center; }
+.moves { list-style: none; padding: 0; margin: 0 0 .9em; }
+.moves li { display: grid; grid-template-columns: 4.4em minmax(0, 1fr) 3.2em; gap: 10px; align-items: center; padding: 3px 0; border-bottom: 1px dotted rgba(17, 17, 17, .4); }
+.moves li:first-child { font-weight: 700; }
+.moves .pc { text-align: right; }
+
+/* Card 2 */
+.sheets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 20px 14px; margin: 18px 0 20px; }
+.sheet { padding: 6px 6px 5px; background: #F8F5EE; transform: rotate(var(--r)); box-shadow: 0 1px 1.5px rgba(60, 45, 30, .3); }
+.sheet figcaption { margin-top: 4px; font-size: 12px; line-height: 1.15; }
+.sheet b { font: 760 17px var(--display); margin-right: 5px; color: var(--blue); }
+
+/* Card 3 */
+.output { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 40px); align-items: start; }
+.quilt { position: relative; }
+.quilt .hover { position: absolute; left: 0; top: 0; cursor: crosshair; touch-action: pan-y; }
+.readout { min-height: 3em; margin: 1em 0 0; padding-top: .5em; border-top: 1px solid rgba(17, 17, 17, .45); font-size: 14px; }
+
+/* Card 4 */
+.bug { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 40px); align-items: start; }
+.stage figcaption { margin-top: 8px; }
+.prints { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 6px 0 12px; }
+.print figcaption { font-size: 13px; line-height: 1.3; margin-top: 4px; }
+
+/* Address side */
+.address { position: relative; display: flex; flex-direction: column; padding-left: 22px; border-left: 1px solid rgba(17, 17, 17, .5); }
+.postage { align-self: flex-end; transform: rotate(2.5deg); mix-blend-mode: normal; filter: drop-shadow(0 1px .6px rgba(60, 45, 30, .4)); }
+.postmark { position: absolute; top: 58px; right: 34px; width: 190px; transform: rotate(-12deg); mix-blend-mode: multiply; opacity: .85; pointer-events: none; }
+.postmark svg { display: block; width: 100%; }
+.to { margin-top: auto; padding-top: 140px; }
+.to p { margin: 0; padding: 12px 0 1px; border-bottom: 1px solid rgba(17, 17, 17, .45); font-size: 14px; white-space: nowrap; }
+
+.links { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 10px; }
+.links a { font: 600 22px/1.2 var(--display); color: var(--blue); text-decoration-color: var(--orange); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.links a:hover { color: var(--purple); }
+
+.sound {
+  position: fixed; top: 12px; right: 14px; z-index: 10;
+  font: 14px var(--type); color: var(--ink); background: var(--paper);
+  border: 1px solid rgba(17, 17, 17, .6); padding: 3px 10px; cursor: pointer; transform: rotate(-2deg);
+}
+.sound[aria-pressed='true'] { background: #f7d3c2; }
+.sound:focus-visible, .links a:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
+
+@media (max-width: 960px) {
+  .card { grid-template-columns: 1fr; }
+  /* The address side becomes a strip across the top of the card. */
+  .address { order: -1; flex-direction: row; align-items: flex-start; gap: 16px; padding: 0 0 16px; border-left: 0; border-bottom: 1px solid rgba(17, 17, 17, .5); }
+  .postage { order: 2; margin-left: auto; }
+  .to { margin-top: 0; padding-top: 0; flex: 1; min-width: 0; }
+  .to p { padding-top: 8px; overflow: hidden; text-overflow: ellipsis; }
+  .postmark { top: -6px; right: 64px; width: 150px; }
+}
+@media (max-width: 680px) {
+  .front, .output, .bug { grid-template-columns: 1fr; }
+  .sheets { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 10px; }
+  .sheet { padding: 4px 4px 3px; }
+  .sheet figcaption { font-size: 10.5px; }
+  .postmark { right: 52px; width: 128px; }
+  .typed { font-size: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .slot:not(.landed) .card { transition: none; transform: rotate(var(--tilt)); }
+}
