@@ -17,7 +17,8 @@ let session: Promise<ort.InferenceSession> | null = null
 
 export function loadEngine(onProgress?: (fraction: number) => void): Promise<ort.InferenceSession> {
   if (session) return session
-  ort.env.wasm.wasmPaths = { wasm: ortWasm, mjs: ortMjs }
+  // The first deploy served the loader as a download, cached for a year; the query gives it a fresh URL.
+  ort.env.wasm.wasmPaths = { wasm: ortWasm, mjs: `${ortMjs}?v=2` }
   ort.env.wasm.numThreads = 1
   // Inference runs in ORT's own worker, so the page never freezes while it thinks.
   ort.env.wasm.proxy = true

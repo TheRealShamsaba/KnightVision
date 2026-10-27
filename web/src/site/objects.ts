@@ -195,6 +195,8 @@ export function graded(root: HTMLElement): () => void {
 
 // ---- 9. Stamp album: every game against Stockfish is a stamp ----------------------------------
 export function albumPage(c: HTMLCanvasElement, width: number): void {
+  // A page laid out at zero width (a hidden tab) draws on the next resize instead.
+  if (!width) return
   const games = data.elo?.games ?? []
   const levels = [...new Set(games.map((g) => g.elo))].sort()
   const cols = width < 460 ? 10 : 20

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Puts KnightVision live at knightvision.realcompanys.com. Run on the server, as root:
 #   curl -fsSL https://raw.githubusercontent.com/TheRealShamsaba/KnightVision/v2/deploy/server-setup.sh | bash
+# Root can't log in over ssh; come in as arian, then become root:
+#   ssh -i ~/.ssh/realcompany-pro-1_ed25519 arian@178.104.74.99
+#   sudo -i
 # Optional: EMAIL=you@example.com for Let's Encrypt expiry notices.
 #
 # Careful with what's already there: it adds one nginx site and one folder, tests the config before
@@ -9,8 +12,8 @@ set -euo pipefail
 
 DOMAIN=knightvision.realcompanys.com
 ROOT=/var/www/knightvision
-RELEASE=https://github.com/TheRealShamsaba/KnightVision/releases/download/web-v2.1/knightvision-web-v2.1.tar.gz
-SHA256=1fe8b0c4dafb6d2da1b13332dee85e0cbddec799e7eb35b1835805382ed673cf
+RELEASE=https://github.com/TheRealShamsaba/KnightVision/releases/download/web-v2.2/knightvision-web-v2.2.tar.gz
+SHA256=6f9f9fb4579cd47d787c96ac1c5f4e0a9f2af53fc315dd1d15985b42aa0daf11
 
 say() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 fail() { printf '\n\033[31mStopped: %s\033[0m\n' "$*" >&2; exit 1; }
