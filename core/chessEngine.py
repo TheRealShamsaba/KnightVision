@@ -58,7 +58,6 @@ class GameState():
         self.moveLog = []
         self.whiteKingLocation = (7,4)
         self.blackKingLocation = (0,4)
-        self.insideSquareUnderAttack = False
         # Track checkmate and stalemate
         self.checkMate = False
         self.staleMate = False
@@ -309,6 +308,9 @@ class GameState():
                             newMoves.append(move)
                     elif (move.endRow, move.endCol) in validSquares:
                         newMoves.append(move)
+                    elif move.isEnPassantMove and (move.startRow, move.endCol) == (checkRow, checkCol):
+                        # en passant removes a checking pawn without landing on its square
+                        newMoves.append(move)
                 moves = newMoves
             else:
                 moves = []
@@ -370,7 +372,7 @@ class GameState():
                 else:
                     continue
             # checks for knight checks
-        knightMoves = [(-2,-1), (-1, -2), (-1, 2), 
+        knightMoves = [(-2,-1), (-1, -2), (-2, 1), (-1, 2),
                            (1, -2), (2,-1), (1,2), (2,1)]
         for m in knightMoves:
             endRow = kingRow + m[0]
@@ -398,20 +400,35 @@ class GameState():
     determine if the enemy can attack the square r ,c 
     '''    
     def squareUnderAttack(self, r, c):
-        if self.insideSquareUnderAttack:
-            return False
-        self.insideSquareUnderAttack = True
-
-        originalTurn = self.whiteToMove
-        self.whiteToMove = not originalTurn
-        oppMoves = self.getAllPossibleMoves()
-
-        self.whiteToMove = originalTurn
-        self.insideSquareUnderAttack = False
-
-        for move in oppMoves:
-            if move.endRow == r and move.endCol == c:
+        # Looks outward from (r, c) for enemy attackers instead of generating enemy moves:
+        # pawn pushes are not attacks, pawn captures onto empty squares are, and pinned
+        # pieces still attack.
+        enemyColor = 'b' if self.whiteToMove else 'w'
+        # an enemy pawn attacks diagonally towards our side of the board
+        pawnRow = r - 1 if enemyColor == 'b' else r + 1
+        for dc in (-1, 1):
+            if 0 <= pawnRow < 8 and 0 <= c + dc < 8 and self.board[pawnRow][c + dc] == enemyColor + 'p':
                 return True
+
+        knightMoves = [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]
+        for d in knightMoves:
+            endRow, endCol = r + d[0], c + d[1]
+            if 0 <= endRow < 8 and 0 <= endCol < 8 and self.board[endRow][endCol] == enemyColor + 'N':
+                return True
+
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for d in directions:
+            sliders = ('R', 'Q') if 0 in d else ('B', 'Q')
+            for i in range(1, 8):
+                endRow, endCol = r + d[0] * i, c + d[1] * i
+                if not (0 <= endRow < 8 and 0 <= endCol < 8):
+                    break
+                endPiece = self.board[endRow][endCol]
+                if endPiece == "--":
+                    continue
+                if endPiece[0] == enemyColor and (endPiece[1] in sliders or (i == 1 and endPiece[1] == 'K')):
+                    return True
+                break
         return False
 
     def getAllPossibleMovesRaw(self, ignoreKing=False):
@@ -454,8 +471,9 @@ class GameState():
             startRow = 1
             enemyColor = 'w'
 
+        # Pin directions point away from the king, so a pin may run either way along the move.
         # Move forward (only if not pinned or pinned vertically)
-        if pinDirection is None or pinDirection == (moveAmount, 0):
+        if pinDirection is None or pinDirection in ((moveAmount, 0), (-moveAmount, 0)):
             if 0 <= r + moveAmount < 8 and self.board[r + moveAmount][c] == "--":
                 moves.append(Move((r, c), (r + moveAmount, c), self.board))
                 if r == startRow and self.board[r + 2 * moveAmount][c] == "--":
@@ -464,13 +482,30 @@ class GameState():
         # Captures (only if not pinned or pinned diagonally)
         for dc in [-1, 1]:
             if 0 <= c + dc < 8:
-                if pinDirection is None or pinDirection == (moveAmount, dc):
+                if pinDirection is None or pinDirection in ((moveAmount, dc), (-moveAmount, -dc)):
                     if 0 <= r + moveAmount < 8:
                         if self.board[r + moveAmount][c + dc][0] == enemyColor:
                             moves.append(Move((r, c), (r + moveAmount, c + dc), self.board))
-                        elif (r + moveAmount, c + dc) == self.enPassantPossible:
+                        elif (r + moveAmount, c + dc) == self.enPassantPossible and not self.enPassantExposesKing(r, c, dc):
                             moves.append(Move((r, c), (r + moveAmount, c + dc), self.board, isEnPassantMove=True))
                     
+    '''
+    en passant removes two pawns from the same rank at once, which can open that rank
+    onto our king even when neither pawn is pinned on its own
+    '''
+    def enPassantExposesKing(self, r, c, dc):
+        kingRow, kingCol = self.whiteKingLocation if self.whiteToMove else self.blackKingLocation
+        if kingRow != r:
+            return False
+        moveAmount = -1 if self.whiteToMove else 1
+        movedPawn, capturedPawn = self.board[r][c], self.board[r][c + dc]
+        self.board[r][c] = self.board[r][c + dc] = "--"
+        self.board[r + moveAmount][c + dc] = movedPawn
+        exposed = self.squareUnderAttack(kingRow, kingCol)
+        self.board[r + moveAmount][c + dc] = "--"
+        self.board[r][c], self.board[r][c + dc] = movedPawn, capturedPawn
+        return exposed
+
     '''
     get all the rook moves for the rook located at row, col and add these moves to the list
     '''

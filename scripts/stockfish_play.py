@@ -3,7 +3,7 @@ import chess
 import chess.engine
 import torch
 from ai.model import ChessNet
-from ai import encode_board, decode_move_index
+from ai import encode_board, legal_move_indices
 import random
 import numpy as np
 import tensorflow as tf
@@ -59,29 +59,18 @@ def play_vs_stockfish(model, num_games=10, stockfish_path="/usr/games/stockfish"
                     
                     with torch.no_grad():
                         logits, _ = model(board_tensor)  # shape [1, 4096]
-                        # Build a mask of legal move indices
-                        legal = list(board.legal_moves)
-                        mask = torch.zeros_like(logits)  # same shape [1,4096]
-                        for m in legal:
-                            u = m.uci()
-                            sc = ord(u[0]) - ord('a'); sr = 8 - int(u[1])
-                            ec = ord(u[2]) - ord('a'); er = 8 - int(u[3])
-                            from_idx = sr * 8 + sc
-                            to_idx   = er * 8 + ec
-                            idx = from_idx * 64 + to_idx
-                            mask[0, idx] = 1
-                        
-                        if mask.sum() == 0:
+                        # Only consider logits of legal moves
+                        legal = legal_move_indices(board)
+                        if not legal:
                             # no legal moves: fall back
                             result = engine.play(board, chess.engine.Limit(time=0.01))
                             board.push(result.move)
                         else:
-                            # only consider legal logits
-                            filtered = logits.masked_fill(mask == 0, float('-inf'))
+                            mask = torch.zeros_like(logits, dtype=torch.bool)
+                            mask[0, list(legal)] = True
+                            filtered = logits.masked_fill(~mask, float('-inf'))
                             move_idx = torch.argmax(filtered, dim=1).item()
-                            sr, sc, er, ec = decode_move_index(move_idx)
-                            move = chess.Move.from_uci(f"{chr(sc+97)}{8-sr}{chr(ec+97)}{8-er}")
-                            board.push(move)
+                            board.push(legal[move_idx])
                 else:
                     result = engine.play(board, chess.engine.Limit(time=0.1))
                     board.push(result.move)
@@ -127,7 +116,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ChessNet().to(device)
     state = torch.load(args.model_path, map_location=device)
-    model.load_state_dict(state)
+    model.load_state_dict(state.get("model_state_dict", state))
     model.eval()
 
     # Run evaluation

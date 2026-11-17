@@ -1,0 +1,37 @@
+/* The shared menu. Pages restyle it by setting these variables on .kv-nav. */
+.kv-nav {
+  --nav-bg: #F3EDE2;
+  --nav-fg: #1E1B17;
+  --nav-accent: #C0392B;
+  --nav-font: system-ui, sans-serif;
+  --nav-rule: rgba(30, 27, 23, 0.2);
+  position: fixed; z-index: 50;
+  top: calc(12px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px; background: var(--nav-bg); border: 1px solid var(--nav-rule);
+  box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.55);
+  font: 500 14px/1 var(--nav-font); color: var(--nav-fg);
+}
+.kv-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
+.kv-nav a { display: block; padding: 8px 12px; color: inherit; text-decoration: none; white-space: nowrap; }
+.kv-brand { font-weight: 700; padding-right: 14px !important; border-right: 1px solid var(--nav-rule); margin-right: 2px; }
+.kv-nav ul a:hover { color: var(--nav-accent); }
+/* Where you are: the tab is filled in. */
+.kv-nav ul a[aria-current="page"] { background: var(--nav-fg); color: var(--nav-bg); }
+/* Play is the one thing most visitors came for, so it carries the accent. */
+.kv-nav .kv-play { color: var(--nav-accent); font-weight: 700; }
+.kv-nav .kv-play::before { content: '▸ '; }
+.kv-nav a:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
+
+/* Phones: a tab bar along the bottom edge, four equal tabs, like an app. */
+@media (max-width: 720px) {
+  .kv-nav {
+    top: auto; left: 0; right: 0; bottom: 0; padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    border-width: 1px 0 0; box-shadow: 0 -8px 20px -14px rgba(0, 0, 0, 0.5);
+  }
+  .kv-nav .kv-brand { display: none; }
+  .kv-nav ul { flex: 1; gap: 0; }
+  .kv-nav li { flex: 1; }
+  .kv-nav a { text-align: center; padding: 17px 4px; font-size: 13px; }
+  body { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+}
