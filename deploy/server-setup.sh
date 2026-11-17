@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Puts KnightVision live at knightvision.realcompanys.com. Run on the server, as root:
-#   curl -fsSL https://raw.githubusercontent.com/TheRealShamsaba/KnightVision/v2/deploy/server-setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/TheRealShamsaba/KnightVision/main/deploy/server-setup.sh | bash
 # Root can't log in over ssh; come in as arian, then become root:
 #   ssh -i ~/.ssh/realcompany-pro-1_ed25519 arian@178.104.74.99
 #   sudo -i
